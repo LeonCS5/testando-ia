@@ -17,6 +17,7 @@ export default class PlayState {
     this.timer = config.time;
     this.levelComplete = false;
     this.winnerName = '';
+    this.beatCountdown = 1.0; // Começa tocando a cada 1 segundo
     this.online = Boolean(config.online);
     this.playerName = config.playerName || 'PLAYER';
     this.playerColor = config.playerColor || '#2ef98e';
@@ -126,6 +127,23 @@ export default class PlayState {
     }
 
     this.juice.update(dt);
+    // --- MAESTRO DA TRILHA SONORA ---
+    this.beatCountdown -= dt;
+    if (this.beatCountdown <= 0) {
+      // timeRatio vai de 1.0 (cheio) a 0.0 (vazio)
+      const timeRatio = Math.max(0, this.timer / this.config.time);
+      
+      // tension inverte isso: vai de 0.0 (calmo) a 1.0 (desespero máximo)
+      const tension = 1 - timeRatio;
+      
+      // Envia a tensão para o áudio gerar a nota certa
+      this.game.audio.playBeat(tension);
+      
+      // O ritmo acelera: começa em 0.8s (relax) e vai até 0.12s (fritante)
+      const nextDelay = 0.12 + (timeRatio * 0.68);
+      this.beatCountdown = nextDelay;
+    }
+    // ---------------------------------
     this.player.update(dt, input, this.maze, this.juice, this.game.audio);
     if (this.online) {
       this.bots.forEach((bot) => bot.update(dt, this.maze, this.exitWorld));

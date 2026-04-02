@@ -69,4 +69,37 @@ export default class Audio {
     
     this.playTone(100, 0.6, 'square', 0.3, 0.4);       // "Queda de energia" final e grave
   }
+
+// Trilha sonora procedural (Bumbo + Baixo + Arpejo)
+  playBeat(tension = 0) {
+    // 1. O Bumbo (Kick) original
+    this.playTone(60, 0.15, 'sine', 0.5); 
+    this.playTone(120, 0.05, 'triangle', 0.2); 
+    
+    // 2. Chimbau (Hi-hat) eletrônico agudo para dar ritmo
+    this.playTone(6000, 0.03, 'square', 0.05);
+
+    // 3. A Escala Musical do Suspense (Dó Menor Pentatônica)
+    // Frequências: Dó, Mi bemol, Fá, Sol, Si bemol
+    const scale = [262, 311, 349, 392, 466]; 
+    const randomNote = scale[Math.floor(Math.random() * scale.length)];
+
+    // 4. A Matemática da Tensão (Muda o som conforme o tempo acaba)
+    // Se a tensão passar de 70%, o som pula uma oitava (fica mais agudo e urgente)
+    const octave = tension > 0.7 ? 2 : 1; 
+    
+    // Se a tensão passar de 50%, a onda muda de 'square' (videogame) para 'sawtooth' (rasgada/alerta)
+    const waveType = tension > 0.5 ? 'sawtooth' : 'square';
+    
+    // O volume do baixo aumenta levemente junto com a tensão
+    const synthVolume = 0.08 + (tension * 0.07);
+
+    // 5. Toca o Sintetizador (Baixo/Arpejo)
+    this.playTone(randomNote * octave, 0.15, waveType, synthVolume);
+    
+    // Adiciona uma nota grave constante de fundo se a tensão estiver muito alta
+    if (tension > 0.8) {
+      this.playTone(131, 0.1, 'sawtooth', 0.15); // Dó grave pulsando
+    }
+  }
 }
