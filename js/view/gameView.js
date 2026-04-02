@@ -115,13 +115,20 @@ export default class GameView {
     if (this.model.gameState === 'menu') {
       this.ctx.fillStyle = '#00ffcc';
       this.ctx.textAlign = 'center';
-      this.ctx.font = 'bold 32px Segoe UI';
-      this.ctx.fillText('Neon Labyrinth', this.width / 2, this.height / 2 - 60);
+      this.ctx.font = 'bold 36px Segoe UI';
+      this.ctx.fillText('Neon Labyrinth', this.width / 2, this.height / 2 - 100);
       this.ctx.font = '18px Segoe UI';
-      this.ctx.fillText('Press ENTER or SPACE to start', this.width / 2, this.height / 2 - 20);
-      this.ctx.fillText('Use WASD / Arrow keys to move', this.width / 2, this.height / 2 + 10);
-      this.ctx.fillText('Press ESC during play to return to menu', this.width / 2, this.height / 2 + 40);
-      this.ctx.fillText(`Best Score: ${this.model.bestScore}`, this.width / 2, this.height / 2 + 80);
+      this.ctx.fillText('Use ← / → or ↑ / ↓ to choose difficulty', this.width / 2, this.height / 2 - 60);
+      this.ctx.fillStyle = '#d6b3ff';
+      this.ctx.fillText('Press ENTER or SPACE to start', this.width / 2, this.height / 2 + 110);
+
+      const options = this.model.difficulties;
+      options.forEach((option, index) => {
+        const isSelected = index === this.model.selectedDifficulty;
+        this.ctx.font = isSelected ? 'bold 22px Segoe UI' : '18px Segoe UI';
+        this.ctx.fillStyle = isSelected ? '#ff8cff' : '#8cb2ff';
+        this.ctx.fillText(`${option.name} — ${option.w}x${option.h}, ${option.time}s`, this.width / 2, this.height / 2 + index * 32 + 10);
+      });
       this.ctx.textAlign = 'left';
     } else if (this.model.gameState === 'levelComplete') {
       this.ctx.textAlign = 'center';

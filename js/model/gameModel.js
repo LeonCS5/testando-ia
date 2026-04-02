@@ -6,15 +6,23 @@ import { CELL_W, CELL_H, TILE_SIZE } from '../constants.js';
 
 export default class GameModel {
   constructor() {
-    this.maze = new Maze(CELL_W, CELL_H);
+    this.selectedDifficulty = 0;
+    this.difficulties = [
+      { name: 'Easy', w: CELL_W, h: CELL_H, time: 15 },
+      { name: 'Medium', w: 31, h: 31, time: 22 },
+      { name: 'Hard', w: 41, h: 41, time: 30 },
+    ];
+    this.currentDifficulty = this.difficulties[this.selectedDifficulty];
+    this.maze = new Maze(this.currentDifficulty.w, this.currentDifficulty.h);
     this.effects = new EffectManager();
     this.player = null;
     this.exitTarget = null;
     this.score = 0;
     this.bestScore = 0;
-    this.regenTimer = 15;
+    this.regenTimer = this.currentDifficulty.time;
     this.levelCompleteTimer = 0;
     this.gameState = 'menu';
+    this.menuInputCooldown = 0;
     this.screenWidth = window.innerWidth;
     this.screenHeight = window.innerHeight;
     this.placeEntities();
@@ -51,10 +59,33 @@ export default class GameModel {
 
   ensurePlayerInsideOpenCell() {
     if (!this.player) return;
-    const [cellx, celly] = this.getCellCoord(this.player.x, this.player.y);
-    if (this.maze.isWall(cellx, celly)) {
+    const half = this.player.size / 2;
+    const corners = [
+      [this.player.x - half, this.player.y - half],
+      [this.player.x + half, this.player.y - half],
+      [this.player.x - half, this.player.y + half],
+      [this.player.x + half, this.player.y + half],
+    ];
+
+    const overlapsWall = corners.some(([px, py]) => {
+      const [cellx, celly] = this.getCellCoord(px, py);
+      return this.maze.isWall(cellx, celly);
+    });
+
+    if (overlapsWall) {
       this.setPlayerToRandomOpenCell();
     }
+  }
+
+  cycleDifficulty(amount) {
+    const count = this.difficulties.length;
+    this.selectedDifficulty = (this.selectedDifficulty + amount + count) % count;
+  }
+
+  applySelectedDifficulty() {
+    this.currentDifficulty = this.difficulties[this.selectedDifficulty];
+    this.maze = new Maze(this.currentDifficulty.w, this.currentDifficulty.h);
+    this.regenTimer = this.currentDifficulty.time;
   }
 
   placeEntities() {
@@ -93,17 +124,29 @@ export default class GameModel {
     this.exitTarget = new Exit(exitX, exitY);
     this.effects.triggerGlitch();
     sounds.mazeRegenerate();
-    this.regenTimer = 15;
+    this.regenTimer = this.currentDifficulty.time;
   }
 
   resetRound() {
     this.score = 0;
-    this.regenTimer = 15;
+    this.applySelectedDifficulty();
+    this.regenTimer = this.currentDifficulty.time;
     this.placeEntities();
   }
 
   update(dt, input, sounds) {
     if (this.gameState === 'menu') {
+      this.menuInputCooldown = Math.max(0, this.menuInputCooldown - dt);
+      if (this.menuInputCooldown <= 0) {
+        if (input.left || input.up) {
+          this.cycleDifficulty(-1);
+          this.menuInputCooldown = 0.16;
+        } else if (input.right || input.down) {
+          this.cycleDifficulty(1);
+          this.menuInputCooldown = 0.16;
+        }
+      }
+
       if (input.enter) {
         this.resetRound();
         this.gameState = 'playing';

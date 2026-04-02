@@ -5,7 +5,7 @@ export default class Player {
     this.x = x;
     this.y = y;
     this.speed = 160;
-    this.size = TILE_SIZE * 0.6;
+    this.size = TILE_SIZE * 0.5; // smaller body so player has more free room inside maze corridors
     this.vx = 0;
     this.vy = 0;
     this.wallHitCooldown = 0;
@@ -30,6 +30,7 @@ export default class Player {
     let nx = this.x + this.vx * step;
     let ny = this.y + this.vy * step;
     const half = this.size / 2;
+    const pushBack = 3;
 
     const collides = (cx, cy) => {
       const corners = [
@@ -47,11 +48,11 @@ export default class Player {
 
     let collision = false;
     if (collides(nx, this.y)) {
-      nx = this.x;
+      nx = this.x - Math.sign(this.vx) * pushBack;
       collision = true;
     }
     if (collides(this.x, ny)) {
-      ny = this.y;
+      ny = this.y - Math.sign(this.vy) * pushBack;
       collision = true;
     }
 
@@ -61,8 +62,6 @@ export default class Player {
         effectManager.requestSound('wallHit');
         this.wallHitCooldown = 0.18;
       }
-      nx = this.x;
-      ny = this.y;
     }
 
     this.wallHitCooldown = Math.max(0, this.wallHitCooldown - dt);
