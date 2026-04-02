@@ -3,6 +3,7 @@ import { generateMaze } from '../mechanics/Generator.js';
 
 export default class Maze {
   constructor(width, height) {
+    this.tileSize = TILE_SIZE;
     this.width = width;
     this.height = height;
     this.originX = 0;
@@ -18,15 +19,22 @@ export default class Maze {
     this.openCells = result.openCells;
   }
 
-  setLayout(screenWidth, screenHeight) {
-    const totalWidth = this.width * TILE_SIZE;
-    const totalHeight = this.height * TILE_SIZE;
-    this.originX = (screenWidth - totalWidth) / 2;
-    this.originY = (screenHeight - totalHeight) / 2;
-  }
+setLayout(screenWidth, screenHeight) {
+  // 🔥 calcula tile dinamicamente baseado no tamanho REAL do mapa
+  this.tileSize = Math.min(
+    screenWidth / this.width,
+    screenHeight / this.height
+  );
+
+  const totalWidth = this.width * this.tileSize;
+  const totalHeight = this.height * this.tileSize;
+
+  this.originX = (screenWidth - totalWidth) / 2;
+  this.originY = (screenHeight - totalHeight) / 2;
+}
 
   draw(ctx) {
-    const tileScale = TILE_SIZE;
+    const tileScale = this.tileSize;
     for (let y = 0; y < this.height; y += 1) {
       for (let x = 0; x < this.width; x += 1) {
         if (this.grid[y][x] === 1) {
@@ -49,12 +57,12 @@ export default class Maze {
   }
 
   getCellCenter(cellX, cellY) {
-    return [this.originX + cellX * TILE_SIZE + TILE_SIZE / 2, this.originY + cellY * TILE_SIZE + TILE_SIZE / 2];
+    return [this.originX + cellX * this.tileSize + this.tileSize / 2, this.originY + cellY * this.tileSize + this.tileSize / 2];
   }
 
   isWallAtWorld(x, y) {
-    const gridX = Math.floor((x - this.originX) / TILE_SIZE);
-    const gridY = Math.floor((y - this.originY) / TILE_SIZE);
+    const gridX = Math.floor((x - this.originX) / this.tileSize);
+    const gridY = Math.floor((y - this.originY) / this.tileSize);
     if (gridX < 0 || gridX >= this.width || gridY < 0 || gridY >= this.height) {
       return true;
     }
@@ -67,8 +75,8 @@ export default class Maze {
   }
 
   worldToCell(x, y) {
-    const cellX = Math.floor((x - this.originX) / TILE_SIZE);
-    const cellY = Math.floor((y - this.originY) / TILE_SIZE);
+    const cellX = Math.floor((x - this.originX) / this.tileSize);
+    const cellY = Math.floor((y - this.originY) / this.tileSize);
     return [cellX, cellY];
   }
 
