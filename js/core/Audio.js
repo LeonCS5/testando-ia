@@ -10,26 +10,57 @@ export default class Audio {
     return Promise.resolve();
   }
 
-  // Adicionamos o parâmetro 'delay' (em segundos) para criar melodias
-  playTone(freq, duration, type = 'sine', gain = 0.18, delay = 0) {
+  // 1. O NOVO MOTOR DE ÁUDIO (Com Filtro Analógico)
+  playTone(freq, duration, type = 'sine', gain = 0.18, delay = 0, filterFreq = 20000) {
     const now = this.audioCtx.currentTime + delay;
     const oscillator = this.audioCtx.createOscillator();
     const gainNode = this.audioCtx.createGain();
-    
+    const filter = this.audioCtx.createBiquadFilter(); 
+
     oscillator.type = type;
     oscillator.frequency.value = freq;
-    
-    // O volume sobe no tempo exato agendado e decai
+
+    // Se o filtro for menor que 20000, ele cria o som "moderno" e abafado
+    filter.type = 'lowpass';
+    if (filterFreq < 20000) {
+      filter.frequency.setValueAtTime(filterFreq, now);
+      filter.frequency.exponentialRampToValueAtTime(100, now + duration);
+    } else {
+      filter.frequency.value = filterFreq;
+    }
+
     gainNode.gain.setValueAtTime(gain, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    
-    oscillator.connect(gainNode);
+
+    oscillator.connect(filter);
+    filter.connect(gainNode);
     gainNode.connect(this.audioCtx.destination);
-    
+
     oscillator.start(now);
     oscillator.stop(now + duration);
   }
 
+  // 2. O BUMBO MODERNO (Soco no peito)
+  playModernKick() {
+    const now = this.audioCtx.currentTime;
+    const osc = this.audioCtx.createOscillator();
+    const gain = this.audioCtx.createGain();
+    
+    osc.type = 'sine';
+    // A frequência cai rápido para dar o "Punch"
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+    
+    gain.gain.setValueAtTime(0.7, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    
+    osc.connect(gain);
+    gain.connect(this.audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  }
+
+  // --- EFEITOS SONOROS ANTIGOS ---
   wallHit() {
     this.playTone(180, 0.08, 'square', 0.18);
   }
@@ -39,67 +70,67 @@ export default class Audio {
     this.playTone(620, 0.06, 'sine', 0.1);
   }
 
-  // --- NOVAS MÚSICAS / JINGLES ---
-
-  // 1. Jogador Ganha: Proporções Pitagóricas (Acorde Maior)
-  // Som heroico, ascendente e com onda 'triangle' que soa suave como um videogame antigo.
   playerWin() {
-    this.playTone(262, 0.2, 'triangle', 0.2, 0);       // Nota Dó (C)
-    this.playTone(330, 0.2, 'triangle', 0.2, 0.15);    // Nota Mi (E)
-    this.playTone(392, 0.2, 'triangle', 0.2, 0.3);     // Nota Sol (G)
-    this.playTone(523, 0.6, 'triangle', 0.2, 0.45);    // Dó mais agudo (Oitava) segurado por mais tempo
+    this.playTone(262, 0.2, 'triangle', 0.2, 0);       
+    this.playTone(330, 0.2, 'triangle', 0.2, 0.15);    
+    this.playTone(392, 0.2, 'triangle', 0.2, 0.3);     
+    this.playTone(523, 0.6, 'triangle', 0.2, 0.45);    
   }
 
-  // 2. Bot Ganha: Robótico e Descendente
-  // Usa ondas 'square' (quadradas), que soam artificiais e robóticas, caindo de tom.
   botWin() {
-    this.playTone(600, 0.15, 'square', 0.15, 0);       // Bip alto
-    this.playTone(450, 0.15, 'square', 0.15, 0.2);     // Bip médio
-    this.playTone(300, 0.5, 'square', 0.15, 0.4);      // Bip grave ("womp womp" robótico)
+    this.playTone(600, 0.15, 'square', 0.15, 0);       
+    this.playTone(450, 0.15, 'square', 0.15, 0.2);     
+    this.playTone(300, 0.5, 'square', 0.15, 0.4);      
   }
 
-  // 3. O Tempo Acaba: Dissonância e Glitch
-  // Usa o "Trítono" (uma proporção matemática de notas que o cérebro acha muito instável e assustadora) e ondas 'sawtooth' rasgadas.
   timeOut() {
-    this.playTone(300, 0.3, 'sawtooth', 0.2, 0);       // Som base
-    this.playTone(424, 0.3, 'sawtooth', 0.2, 0);       // Trítono tocando junto (Gera tensão/alarme)
-    
-    this.playTone(200, 0.3, 'sawtooth', 0.2, 0.2);     // Cai para um tom mais grave
-    this.playTone(283, 0.3, 'sawtooth', 0.2, 0.2);     // Trítono acompanhando
-    
-    this.playTone(100, 0.6, 'square', 0.3, 0.4);       // "Queda de energia" final e grave
+    this.playTone(300, 0.3, 'sawtooth', 0.2, 0);       
+    this.playTone(424, 0.3, 'sawtooth', 0.2, 0);       
+    this.playTone(200, 0.3, 'sawtooth', 0.2, 0.2);     
+    this.playTone(283, 0.3, 'sawtooth', 0.2, 0.2);     
+    this.playTone(100, 0.6, 'square', 0.3, 0.4);       
   }
 
-// Trilha sonora procedural (Bumbo + Baixo + Arpejo)
+  // --- TRILHA SONORA DARKSYNTH / CYBERPUNK ---
   playBeat(tension = 0) {
-    // 1. O Bumbo (Kick) original
-    this.playTone(60, 0.15, 'sine', 0.5); 
-    this.playTone(120, 0.05, 'triangle', 0.2); 
-    
-    // 2. Chimbau (Hi-hat) eletrônico agudo para dar ritmo
-    this.playTone(6000, 0.03, 'square', 0.05);
+    this.step = (this.step === undefined ? 0 : this.step + 1) % 4;
 
-    // 3. A Escala Musical do Suspense (Dó Menor Pentatônica)
-    // Frequências: Dó, Mi bemol, Fá, Sol, Si bemol
-    const scale = [262, 311, 349, 392, 466]; 
-    const randomNote = scale[Math.floor(Math.random() * scale.length)];
+    // 1. KICK (Punch pesado do bumbo moderno)
+    if (this.step === 0 || this.step === 2) {
+      this.playModernKick();
+    }
 
-    // 4. A Matemática da Tensão (Muda o som conforme o tempo acaba)
-    // Se a tensão passar de 70%, o som pula uma oitava (fica mais agudo e urgente)
-    const octave = tension > 0.7 ? 2 : 1; 
-    
-    // Se a tensão passar de 50%, a onda muda de 'square' (videogame) para 'sawtooth' (rasgada/alerta)
-    const waveType = tension > 0.5 ? 'sawtooth' : 'square';
-    
-    // O volume do baixo aumenta levemente junto com a tensão
-    const synthVolume = 0.08 + (tension * 0.07);
+    // 2. SNARE (Caixa eletrônica / Clap)
+    if (this.step === 1 || this.step === 3) {
+      this.playTone(250, 0.15, 'sawtooth', 0.1, 0, 4000); 
+      setTimeout(() => {
+        if (this.audioCtx.state === 'running') this.playTone(8000, 0.1, 'square', 0.05, 0, 10000);
+      }, 15);
+    }
 
-    // 5. Toca o Sintetizador (Baixo/Arpejo)
-    this.playTone(randomNote * octave, 0.15, waveType, synthVolume);
-    
-    // Adiciona uma nota grave constante de fundo se a tensão estiver muito alta
-    if (tension > 0.8) {
-      this.playTone(131, 0.1, 'sawtooth', 0.15); // Dó grave pulsando
+    // 3. HI-HAT (Prato duplo e rápido)
+    this.playTone(10000, 0.04, 'square', 0.02, 0, 15000);
+    setTimeout(() => {
+      if (this.audioCtx.state === 'running') this.playTone(10000, 0.03, 'square', 0.01, 0, 15000);
+    }, 70);
+
+    // 4. BAIXO DARKSYNTH (Com filtro que "abre" com a tensão)
+    const bassNotes = [65.41, 73.42, 77.78, 98.00]; 
+    const filterOpen = 1200 + (tension * 2500); 
+    this.playTone(bassNotes[this.step], 0.25, 'sawtooth', 0.18 + (tension * 0.1), 0, filterOpen);
+
+    // 5. ARPEJADOR DE SUSPENSE (Senoide limpa)
+    if (tension > 0.3) {
+      const arpeggioNotes = [261.63, 311.13, 392.00, 466.16, 523.25];
+      const randomArp = arpeggioNotes[Math.floor(Math.random() * arpeggioNotes.length)];
+      const arpOctave = tension > 0.7 ? 2 : 1; 
+      this.playTone(randomArp * arpOctave, 0.2, 'sine', 0.15 + (tension * 0.1), 0, 5000);
+    }
+
+    // 6. ALARME CRÍTICO (Fim do tempo)
+    if (tension > 0.85 && this.step === 0) {
+      this.playTone(800, 0.4, 'sawtooth', 0.15); 
+      this.playTone(820, 0.4, 'sawtooth', 0.15); 
     }
   }
 }

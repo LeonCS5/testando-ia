@@ -139,8 +139,8 @@ export default class PlayState {
       // Envia a tensão para o áudio gerar a nota certa
       this.game.audio.playBeat(tension);
       
-      // O ritmo acelera: começa em 0.8s (relax) e vai até 0.12s (fritante)
-      const nextDelay = 0.12 + (timeRatio * 0.68);
+      // Começa em 0.35s (Ação frenética) e acelera até 0.10s (Pane no sistema)
+      const nextDelay = 0.10 + (timeRatio * 0.25);
       this.beatCountdown = nextDelay;
     }
     // ---------------------------------
