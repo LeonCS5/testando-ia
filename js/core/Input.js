@@ -1,4 +1,4 @@
-export default class InputManager {
+export default class Input {
   constructor() {
     this.left = false;
     this.right = false;
@@ -7,12 +7,15 @@ export default class InputManager {
     this.enter = false;
     this.escape = false;
     this.retry = false;
-    window.addEventListener('keydown', (e) => this.handleKey(e, true));
-    window.addEventListener('keyup', (e) => this.handleKey(e, false));
+    this.text = '';
+    this.backspace = false;
+
+    window.addEventListener('keydown', (event) => this.handleKey(event, true));
+    window.addEventListener('keyup', (event) => this.handleKey(event, false));
   }
 
-  handleKey(e, value) {
-    const mapping = {
+  handleKey(event, value) {
+    const map = {
       ArrowLeft: 'left',
       KeyA: 'left',
       ArrowRight: 'right',
@@ -26,13 +29,26 @@ export default class InputManager {
       Escape: 'escape',
       KeyR: 'retry',
     };
-    const prop = mapping[e.code];
+
+    const prop = map[event.code];
     if (prop) this[prop] = value;
+    if (!value) return;
+
+    if (event.code === 'Backspace') {
+      this.backspace = true;
+      return;
+    }
+
+    if (event.key.length === 1 && /^[a-zA-Z0-9 ]$/.test(event.key)) {
+      this.text = event.key;
+    }
   }
 
   consumeFrameButtons() {
     this.enter = false;
     this.escape = false;
     this.retry = false;
+    this.text = '';
+    this.backspace = false;
   }
 }
