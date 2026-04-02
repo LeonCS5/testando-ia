@@ -41,6 +41,7 @@ export default class PlayState {
     this.timer = this.config.time;
     this.levelComplete = false;
     this.winnerName = '';
+    this.game.audio.shuffleTrack();
   }
 
   placeEntities() {
@@ -127,23 +128,34 @@ export default class PlayState {
     }
 
     this.juice.update(dt);
-    // --- MAESTRO DA TRILHA SONORA ---
+    // --- MAESTRO DA TRILHA SONORA TURBO ---
     this.beatCountdown -= dt;
     if (this.beatCountdown <= 0) {
-      // timeRatio vai de 1.0 (cheio) a 0.0 (vazio)
       const timeRatio = Math.max(0, this.timer / this.config.time);
-      
-      // tension inverte isso: vai de 0.0 (calmo) a 1.0 (desespero máximo)
       const tension = 1 - timeRatio;
       
-      // Envia a tensão para o áudio gerar a nota certa
       this.game.audio.playBeat(tension);
       
-      // Começa em 0.35s (Ação frenética) e acelera até 0.10s (Pane no sistema)
-      const nextDelay = 0.10 + (timeRatio * 0.25);
+      let nextDelay = 0.1;
+      const track = this.game.audio.currentTrack;
+      
+      if (track === 'cyberpunk') {
+        // Começa rápido (0.14s) e termina insano (0.08s)
+        // Isso é cerca de 420 a 750 BPM por passo!
+        nextDelay = 0.08 + (timeRatio * 0.06); 
+      } 
+      else if (track === 'metal') {
+        // Começa pesado (0.20s) e termina frenético (0.12s)
+        nextDelay = 0.12 + (timeRatio * 0.08); 
+      } 
+      else if (track === 'arcade') {
+        // Começa agitado (0.25s) e termina rápido (0.15s)
+        nextDelay = 0.15 + (timeRatio * 0.10); 
+      }
+      
       this.beatCountdown = nextDelay;
     }
-    // ---------------------------------
+    // ---------------------------------------
     this.player.update(dt, input, this.maze, this.juice, this.game.audio);
     if (this.online) {
       this.bots.forEach((bot) => bot.update(dt, this.maze, this.exitWorld));
