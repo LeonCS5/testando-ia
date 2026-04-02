@@ -120,7 +120,7 @@ export default class PlayState {
     this.timer -= dt;
     if (this.timer <= 0) {
       this.juice.triggerGlitch();
-      this.game.audio.mazeRegenerate();
+      this.game.audio.timeOut(); // <-- MUDOU AQUI (som de erro quando o tempo acaba)
       this.reset();
       return;
     }
@@ -133,14 +133,17 @@ export default class PlayState {
 
     const [exitX, exitY] = this.exitWorld;
     const playerDistance = Math.hypot(exitX - this.player.x, exitY - this.player.y);
+    
+    // --- 1. VITÓRIA DO JOGADOR ---
     if (playerDistance < this.player.size * 0.8) {
       this.levelComplete = true;
       this.winnerName = this.player.name;
       this.juice.localShake(0.5, 1);
-      this.game.audio.levelComplete();
+      this.game.audio.playerWin(); // <-- MUDOU AQUI!
       return;
     }
 
+    // --- 2. VITÓRIA DOS BOTS ---
     if (this.online) {
       for (const bot of this.bots) {
         const botDistance = Math.hypot(exitX - bot.x, exitY - bot.y);
@@ -148,7 +151,7 @@ export default class PlayState {
           this.levelComplete = true;
           this.winnerName = bot.name;
           this.juice.localShake(0.5, 1);
-          this.game.audio.levelComplete();
+          this.game.audio.botWin(); // <-- MUDOU AQUI!
           return;
         }
       }
