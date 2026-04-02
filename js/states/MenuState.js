@@ -8,7 +8,7 @@ export default class MenuState {
       { label: 'Easy', width: 21, height: 21, time: 15, online: false },
       { label: 'Medium', width: 31, height: 31, time: 22, online: false },
       { label: 'Hard', width: 41, height: 41, time: 30, online: false },
-      { label: 'Online', width: 31, height: 31, time: 28, online: true },
+      { label: 'Online', width: 31, height: 31, time: 48, online: true },
     ];
     this.selectedIndex = 0;
     this.cooldown = 0;

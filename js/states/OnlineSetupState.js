@@ -45,7 +45,7 @@ export default class OnlineSetupState {
         online: true,
         width: 31,
         height: 31,
-        time: 28,
+        time: 48,
         playerName: this.onlineName.trim() || 'PLAYER',
         playerColor: this.colors[this.selectedColorIndex].value,
       };

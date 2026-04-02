@@ -125,27 +125,61 @@ export default class Bot {
     const current = maze.worldToCell(this.x, this.y);
     const goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
 
+    // 1. Recalcula a rota a cada 0.3s ou se o objetivo mudar
     if (this.pathCooldown <= 0 || !this.path.length || this.path[this.path.length - 1][0] !== goal[0] || this.path[this.path.length - 1][1] !== goal[1]) {
       this.path = this.findPath(current, goal, maze);
       this.pathCooldown = 0.3;
     }
 
+    // Fallback caso não encontre caminho
     if (this.path.length < 2) {
       this.fastMove(dt, maze, exitWorld);
       return;
     }
 
-    const next = this.path[1];
-    const direction = normalizeVector(next[0] - current[0], next[1] - current[1]);
+    // 2. Evita o congelamento: Avança o alvo se o bot já estiver dentro da célula alvo
+    let nextIndex = 1;
+    while (nextIndex < this.path.length && this.path[nextIndex][0] === current[0] && this.path[nextIndex][1] === current[1]) {
+      nextIndex++;
+    }
+
+    if (nextIndex >= this.path.length) {
+      this.fastMove(dt, maze, exitWorld);
+      return;
+    }
+
+    const nextCell = this.path[nextIndex];
+
+    // 3. O SEGREDO: Calcula a direção para o CENTRO FÍSICO da próxima célula
+    const [targetWorldX, targetWorldY] = maze.getCellCenter(nextCell[0], nextCell[1]);
+    const direction = normalizeVector(targetWorldX - this.x, targetWorldY - this.y);
+    
     const targetX = this.x + direction.x * this.speed * step;
     const targetY = this.y + direction.y * this.speed * step;
+
+    // 4. Move o bot normalmente se o caminho estiver livre
     if (!this.collides(targetX, targetY, maze)) {
       this.x = targetX;
       this.y = targetY;
       return;
     }
 
-    this.balancedMove(dt, maze, exitWorld);
+    // 5. Sistema de deslizamento inteligente: se ele bater na quina de uma parede,
+    // ele tenta deslizar nos eixos X ou Y em vez de usar o balancedMove cego.
+    const attempts = [
+      { x: direction.x, y: 0 },
+      { x: 0, y: direction.y }
+    ];
+
+    for (const attempt of attempts) {
+      const altX = this.x + attempt.x * this.speed * step;
+      const altY = this.y + attempt.y * this.speed * step;
+      if (!this.collides(altX, altY, maze)) {
+        this.x = altX;
+        this.y = altY;
+        return;
+      }
+    }
   }
 
   update(dt, maze, exitWorld) {

@@ -69,9 +69,9 @@ export default class PlayState {
       });
 
       const botDefs = [
-        { name: 'Astra', color: '#ff4fe3', type: 'fast', speed: 190 },
+        { name: 'Astra', color: '#ff4fe3', type: 'smart', speed: 190 },
         { name: 'Flux', color: '#4be3ff', type: 'smart', speed: 110 },
-        { name: 'Nova', color: '#f7ff4f', type: 'balanced', speed: 145 },
+        { name: 'Nova', color: '#f7ff4f', type: 'smart', speed: 145 },
       ];
 
       this.bots = botDefs.map((botDef, index) => {
