@@ -142,15 +142,15 @@ export default class PlayState {
       if (track === 'cyberpunk') {
         // Começa rápido (0.14s) e termina insano (0.08s)
         // Isso é cerca de 420 a 750 BPM por passo!
-        nextDelay = 0.08 + (timeRatio * 0.06); 
+        nextDelay = 0.12 + (timeRatio * 0.10); 
       } 
       else if (track === 'metal') {
         // Começa pesado (0.20s) e termina frenético (0.12s)
-        nextDelay = 0.12 + (timeRatio * 0.08); 
+        nextDelay = 0.15 + (timeRatio * 0.10); 
       } 
       else if (track === 'arcade') {
         // Começa agitado (0.25s) e termina rápido (0.15s)
-        nextDelay = 0.15 + (timeRatio * 0.10); 
+        nextDelay = 0.20 + (timeRatio * 0.15); 
       }
       
       this.beatCountdown = nextDelay;

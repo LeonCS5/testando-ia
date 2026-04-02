@@ -157,68 +157,87 @@ export default class Audio {
     }
   }
 
-  // --- AS FAIXAS DA PLAYLIST ---
+    // --- AS FAIXAS DA PLAYLIST (VERSÃO TURBO) ---
 
   playCyberpunk(tension) {
     const step4 = this.step % 4;
 
-    if (step4 === 0 || step4 === 2) {
-      this.playModernKick();
-    }
+    // 1. RITMO E KICK (Sempre ativo)
+    if (step4 === 0 || step4 === 2) this.playModernKick();
     if (step4 === 1 || step4 === 3) {
       this.playTone(250, 0.15, 'sawtooth', 0.1, 0, 4000); 
-      setTimeout(() => {
-        if (this.audioCtx.state === 'running') this.playTone(8000, 0.1, 'square', 0.05, 0, 10000);
+      setTimeout(() => { 
+        if (this.audioCtx.state === 'running') this.playTone(8000, 0.1, 'square', 0.05, 0, 10000); 
       }, 15);
     }
 
+    // 2. HI-HAT (Prato constante para dar preenchimento)
     this.playTone(10000, 0.04, 'square', 0.02, 0, 15000);
     setTimeout(() => {
       if (this.audioCtx.state === 'running') this.playTone(10000, 0.03, 'square', 0.01, 0, 15000);
     }, 70);
 
+    // 3. BAIXO DARKSYNTH (Sempre ativo, o filtro abre com a tensão)
     const bassNotes = [65.41, 73.42, 77.78, 98.00]; 
     const filterOpen = 1200 + (tension * 2500); 
     this.playTone(bassNotes[step4], 0.25, 'sawtooth', 0.18 + (tension * 0.1), 0, filterOpen);
 
-    if (tension > 0.3) {
+    // 4. ARPEJADOR (Agora entra quase IMEDIATAMENTE - aos 5% de tensão)
+    if (tension > 0.05) { 
       const arpeggioNotes = [261.63, 311.13, 392.00, 466.16, 523.25];
       const randomArp = arpeggioNotes[Math.floor(Math.random() * arpeggioNotes.length)];
-      const arpOctave = tension > 0.7 ? 2 : 1; 
-      this.playTone(randomArp * arpOctave, 0.2, 'sine', 0.15 + (tension * 0.1), 0, 5000);
+      const arpOctave = tension > 0.6 ? 2 : 1; 
+      this.playTone(randomArp * arpOctave, 0.2, 'sine', 0.12 + (tension * 0.1), 0, 5000);
     }
 
-    if (tension > 0.85 && step4 === 0) {
-      this.playTone(800, 0.4, 'sawtooth', 0.15); 
-      this.playTone(820, 0.4, 'sawtooth', 0.15); 
+    // 5. SIRENE CRÍTICA (Entra quando falta pouco tempo - 70%)
+    if (tension > 0.7 && step4 === 0) {
+      this.playTone(800, 0.4, 'sawtooth', 0.12); 
+      this.playTone(820, 0.4, 'sawtooth', 0.12); 
     }
   }
 
   playMetal(tension) {
     const step8 = this.step % 8;
 
-    if (step8 % 2 === 0) {
-       this.playModernKick(); 
+    // 1. BUMBO DUPLO (Sempre ativo)
+    if (step8 % 2 === 0) this.playModernKick(); 
+    
+    // 2. PRATO DE CONDUÇÃO (Preenche as frequências altas no Metal)
+    this.playTone(12000, 0.02, 'square', 0.03, 0, 15000);
+
+    // 3. GUITARRA CHUG (Sempre ativa)
+    if (step8 === 0 || step8 === 1 || step8 === 4 || step8 === 5) {
+      this.playGuitarChug(41.2, 0); // Corda Mi solta
+    }
+    if (step8 === 6) {
+      this.playGuitarChug(46.2, 0); // Variação de nota (F#)
     }
 
-    if (step8 === 0 || step8 === 1 || step8 === 4 || step8 === 5) {
-      this.playGuitarChug(41.2, 0); 
-    }
-    
-    if (step8 === 6) {
-      this.playGuitarChug(46.2, 0); 
+    // 4. BAIXO SUSTENTADO (Adiciona "peso" extra a partir de 40% de tensão)
+    if (tension > 0.4 && step8 === 0) {
+      this.playTone(82.4, 0.5, 'sawtooth', 0.12, 0, 500);
     }
   }
 
   playArcade(tension) {
     const step4 = this.step % 4;
     
+    // 1. BUMBO QUADRADO (Sempre ativo)
     if (step4 === 0) {
       this.playTone(60, 0.15, 'square', 0.3); 
     }
     
-    if (tension > 0.5 && step4 % 2 === 0) {
-      this.playTone(400, 0.1, 'triangle', 0.1);
+    // 2. MELODIA DE 8-BITS (Agora entra logo no começo - 10% de tensão)
+    if (tension > 0.1) {
+      const notes = [440, 523, 659, 783]; // Notas da escala
+      const currentNote = notes[this.step % notes.length];
+      this.playTone(currentNote, 0.1, 'triangle', 0.1);
+    }
+
+    // 3. RUÍDO DIGITAL (Entra para causar confusão aos 60% de tensão)
+    if (tension > 0.6 && step4 % 2 !== 0) {
+      this.playTone(2000, 0.05, 'square', 0.05, 0, 1000);
     }
   }
 }
