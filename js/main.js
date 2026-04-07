@@ -8,17 +8,26 @@ const ctx = canvas.getContext("2d");
 const input = new Input();
 const audio = new Audio();
 
-/* 🔥 RESPONSIVIDADE REAL */
+const game = new Game(canvas, input, audio);
+
+/* 🔥 RESPONSIVIDADE REAL + INTEGRAÇÃO COM O GAME */
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  // 🔹 avisa o jogo que o tamanho mudou
+  if (game && game.onResize) {
+    game.onResize(canvas.width, canvas.height);
+  }
 }
 
 window.addEventListener("resize", resizeCanvas);
+
+/* inicializa tamanho */
 resizeCanvas();
 
-/* áudio (geralmente precisa de interação do usuário, mas ok) */
+/* 🔊 áudio (precisa de interação em alguns browsers, mas deixamos aqui) */
 audio.resume();
 
-const game = new Game(canvas, input, audio);
+/* ▶️ start do jogo */
 game.start();

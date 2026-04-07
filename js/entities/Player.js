@@ -1,34 +1,33 @@
 import { TILE_SIZE } from '../constants.js';
-import { normalizeVector } from '../utils/MathUtils.js';
+import Maze from './Maze.js';
 
 export default class Player {
-  constructor(x, y, options = {}) {
+  constructor(x, y, maze, options = {}) {
     this.x = x;
     this.y = y;
+    this.maze = maze;
+
     this.speed = options.speed || 160;
-    this.size = TILE_SIZE * 0.5;
     this.color = options.color || '#2ef98e';
     this.name = options.name || 'PLAYER';
+
     this.wallHitCooldown = 0;
+    this.size = 10; // fallback
+    this.updateSize();
   }
 
-  setPosition(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  collides(x, y, maze) {
-    const half = this.size / 2;
-    const corners = [
-      [x - half, y - half],
-      [x + half, y - half],
-      [x - half, y + half],
-      [x + half, y + half],
-    ];
-    return corners.some(([cx, cy]) => maze.isWallAtWorld(cx, cy));
+  updateSize() {
+    if (this.maze && Number.isFinite(this.maze.tileSize)) {
+      this.size = this.maze.tileSize * 0.5;
+    }
   }
 
   update(dt, input, maze, juice, audio) {
+    // Atualiza referência do labirinto se mudou
+    if (maze) this.maze = maze;
+
+    this.updateSize();
+
     let vx = 0;
     let vy = 0;
     if (input.left) vx = -this.speed;
@@ -36,40 +35,70 @@ export default class Player {
     if (input.up) vy = -this.speed;
     if (input.down) vy = this.speed;
 
+    // NORMALIZA movimento diagonal
     if (vx !== 0 || vy !== 0) {
-      const normalized = normalizeVector(vx, vy);
-      vx = normalized.x * this.speed;
-      vy = normalized.y * this.speed;
-      juice.spawnTrail(this.x, this.y);
+      const len = Math.hypot(vx, vy) || 1;
+      vx = (vx / len) * this.speed;
+      vy = (vy / len) * this.speed;
+
+      // Só chama spawnTrail se existe
+      if (juice && typeof juice.spawnTrail === 'function') {
+        juice.spawnTrail(this.x, this.y);
+      }
     }
 
     const step = Math.min(dt, 1 / 30);
     let nextX = this.x + vx * step;
     let nextY = this.y + vy * step;
+
     let collision = false;
 
-    if (this.collides(nextX, this.y, maze)) {
+    if (this.collides(nextX, this.y)) {
       nextX = this.x;
       collision = true;
     }
-    if (this.collides(this.x, nextY, maze)) {
+    if (this.collides(this.x, nextY)) {
       nextY = this.y;
       collision = true;
     }
 
     if (collision && this.wallHitCooldown <= 0) {
-      juice.localShake(0.2, 0.8);
-      audio.wallHit();
+      if (juice && typeof juice.localShake === 'function') juice.localShake(0.2, 0.8);
+      if (audio && typeof audio.wallHit === 'function') audio.wallHit();
       this.wallHitCooldown = 0.18;
     }
 
     this.wallHitCooldown = Math.max(0, this.wallHitCooldown - dt);
+
     this.x = nextX;
     this.y = nextY;
   }
 
+  collides(x, y) {
+    const maze = this.maze;
+    if (!maze || !Number.isFinite(maze.tileSize)) return false;
+
+    const half = this.size / 2;
+    const pontos = [
+      [x - half, y - half],
+      [x + half, y - half],
+      [x - half, y + half],
+      [x + half, y + half],
+    ];
+
+    for (const [px, py] of pontos) {
+      if (maze.isWallAtWorld(px, py)) return true;
+    }
+    return false;
+  }
+
   draw(ctx) {
-    const glow = ctx.createRadialGradient(this.x, this.y, this.size * 0.2, this.x, this.y, this.size);
+    if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.size)) return;
+
+    const glow = ctx.createRadialGradient(
+      this.x, this.y, this.size * 0.2,
+      this.x, this.y, this.size
+    );
     glow.addColorStop(0, 'rgba(255,255,255,0.9)');
     glow.addColorStop(0.7, 'rgba(255,255,255,0.05)');
     glow.addColorStop(1, 'rgba(255,255,255,0)');
@@ -80,6 +109,7 @@ export default class Player {
 
     ctx.fillStyle = this.color;
     ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.strokeRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);

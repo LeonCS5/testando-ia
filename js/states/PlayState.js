@@ -65,7 +65,7 @@ export default class PlayState {
 
       const [playerCellX, playerCellY] = startCells[0];
       const [playerX, playerY] = this.maze.getCellCenter(playerCellX, playerCellY);
-      this.player = new Player(playerX, playerY, {
+      this.player = new Player(playerX, playerY, this.maze, {
         color: this.playerColor,
         name: this.playerName,
       });
@@ -92,7 +92,8 @@ export default class PlayState {
 
     const [playerCellX, playerCellY] = this.maze.randomOpenCellExcluding(new Set([`${exitCellX},${exitCellY}`]));
     const [playerX, playerY] = this.maze.getCellCenter(playerCellX, playerCellY);
-    this.player = new Player(playerX, playerY, { color: '#2ef98e' });
+    this.player = new Player(playerX, playerY, this.maze, {
+       color: '#2ef98e' });
   }
 
   findCentralOpenCell() {

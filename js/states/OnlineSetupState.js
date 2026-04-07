@@ -6,10 +6,10 @@ export default class OnlineSetupState {
     this.game = game;
     this.onlineName = 'PLAYER';
     this.colors = [
-      { label: 'Neon Green', value: '#2ef98e' },
+      { label: 'Neon Green',    value: '#2ef98e' },
       { label: 'Electric Blue', value: '#4be3ff' },
-      { label: 'Hot Pink', value: '#ff4fe3' },
-      { label: 'Lime Yellow', value: '#f7ff4f' },
+      { label: 'Hot Pink',      value: '#ff4fe3' },
+      { label: 'Lime Yellow',   value: '#f7ff4f' },
     ];
     this.selectedColorIndex = 0;
     this.cooldown = 0;

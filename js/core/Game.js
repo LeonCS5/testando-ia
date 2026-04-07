@@ -6,24 +6,37 @@ export default class Game {
     this.ctx = canvas.getContext('2d');
     this.input = input;
     this.audio = audio;
+
     this.state = null;
     this.lastTime = 0;
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
+
+    this.width = 0;
+    this.height = 0;
+    this.pixelRatio = window.devicePixelRatio || 1;
+
+    // 🔥 NÃO usa mais resize direto aqui (controlado pelo main.js)
     this.changeState(new MenuState(this));
   }
 
-  resize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    const ratio = window.devicePixelRatio || 1;
-    this.canvas.width = Math.floor(this.width * ratio);
-    this.canvas.height = Math.floor(this.height * ratio);
-    this.canvas.style.width = `${this.width}px`;
-    this.canvas.style.height = `${this.height}px`;
+  /* 🔥 chamado pelo main.js */
+  onResize(width, height) {
+    this.width = width;
+    this.height = height;
+
+    const ratio = this.pixelRatio;
+
+    this.canvas.width = Math.floor(width * ratio);
+    this.canvas.height = Math.floor(height * ratio);
+
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+
+    // 🔹 reset do transform (evita acumular escala)
     this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    // 🔹 avisa o state atual
     if (this.state && typeof this.state.onResize === 'function') {
-      this.state.onResize(this.width, this.height);
+      this.state.onResize(width, height);
     }
   }
 
@@ -31,9 +44,16 @@ export default class Game {
     if (this.state && typeof this.state.onExit === 'function') {
       this.state.onExit();
     }
+
     this.state = state;
+
     if (this.state && typeof this.state.onEnter === 'function') {
       this.state.onEnter();
+    }
+
+    // 🔹 garante que novo state já receba tamanho atual
+    if (this.state && typeof this.state.onResize === 'function') {
+      this.state.onResize(this.width, this.height);
     }
   }
 
@@ -43,6 +63,7 @@ export default class Game {
 
   gameLoop(timestamp) {
     if (!this.lastTime) this.lastTime = timestamp;
+
     const dt = Math.min((timestamp - this.lastTime) / 1000, 1 / 12);
     this.lastTime = timestamp;
 
@@ -52,6 +73,7 @@ export default class Game {
     }
 
     this.input.consumeFrameButtons();
+
     requestAnimationFrame((ts) => this.gameLoop(ts));
   }
 }
