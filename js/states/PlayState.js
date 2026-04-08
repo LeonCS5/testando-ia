@@ -49,51 +49,32 @@ export default class PlayState {
     this.exit = [exitCellX, exitCellY];
     this.exitWorld = this.maze.getCellCenter(exitCellX, exitCellY);
 
-    if (this.online) {
-      const cornerCells = [
-        [1, 1],
-        [this.maze.width - 2, 1],
-        [1, this.maze.height - 2],
-        [this.maze.width - 2, this.maze.height - 2],
-      ];
-      const used = new Set([`${exitCellX},${exitCellY}`]);
-      const startCells = cornerCells.map(([cx, cy]) => {
-        const cell = this.maze.getClosestOpenCell(cx, cy, used);
-        used.add(`${cell[0]},${cell[1]}`);
-        return cell;
+    // Encontra uma célula inicial para todos começarem no mesmo lugar
+    const [startCellX, startCellY] = this.maze.randomOpenCellExcluding(new Set([`${exitCellX},${exitCellY}`]));
+    const [startX, startY] = this.maze.getCellCenter(startCellX, startCellY);
+
+    // Cria o player na célula inicial
+    this.player = new Player(startX, startY, this.maze, {
+      color: this.playerColor,
+      name: this.playerName,
+    });
+
+    // Cria os bots com definições específicas, todos no mesmo local
+    const botDefs = [
+      { name: 'Astra', color: '#ff4fe3', type: 'smart', speed: 190 },
+      { name: 'Flux', color: '#4be3ff', type: 'smart', speed: 110 },
+      { name: 'Nova', color: '#f7ff4f', type: 'smart', speed: 145 },
+    ];
+
+    this.bots = botDefs.map((botDef) => {
+      return new Bot(startX, startY, {
+        name: botDef.name,
+        color: botDef.color,
+        type: botDef.type,
+        speed: botDef.speed,
+        size: 12,
       });
-
-      const [playerCellX, playerCellY] = startCells[0];
-      const [playerX, playerY] = this.maze.getCellCenter(playerCellX, playerCellY);
-      this.player = new Player(playerX, playerY, this.maze, {
-        color: this.playerColor,
-        name: this.playerName,
-      });
-
-      const botDefs = [
-        { name: 'Astra', color: '#ff4fe3', type: 'smart', speed: 190 },
-        { name: 'Flux', color: '#4be3ff', type: 'smart', speed: 110 },
-        { name: 'Nova', color: '#f7ff4f', type: 'smart', speed: 145 },
-      ];
-
-      this.bots = botDefs.map((botDef, index) => {
-        const [cx, cy] = startCells[index + 1];
-        const [botX, botY] = this.maze.getCellCenter(cx, cy);
-        return new Bot(botX, botY, {
-          name: botDef.name,
-          color: botDef.color,
-          type: botDef.type,
-          speed: botDef.speed,
-          size: 12,
-        });
-      });
-      return;
-    }
-
-    const [playerCellX, playerCellY] = this.maze.randomOpenCellExcluding(new Set([`${exitCellX},${exitCellY}`]));
-    const [playerX, playerY] = this.maze.getCellCenter(playerCellX, playerCellY);
-    this.player = new Player(playerX, playerY, this.maze, {
-       color: '#2ef98e' });
+    });
   }
 
   findCentralOpenCell() {
