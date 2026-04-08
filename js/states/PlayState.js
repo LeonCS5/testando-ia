@@ -59,6 +59,17 @@ export default class PlayState {
       name: this.playerName,
     });
 
+//     //const botDefs = [
+//   { name: 'Astra', color: '#ff4fe3', speed: 190, type: 'smart', smartLevel: 3 },
+//   { name: 'Flux', color: '#4be3ff', speed: 110, type: 'smart', smartLevel: 2 },
+//   { name: 'Nova', color: '#f7ff4f', speed: 145, type: 'smart', smartLevel: 1 },
+// ];
+
+// this.bots = botDefs.map((def, index) => {
+//   const [cx, cy] = startCells[index + 1];
+//   const [x, y] = this.maze.getCellCenter(cx, cy);
+//   return new Bot(x, y, def);
+// });
     // Cria os bots com definições específicas, todos no mesmo local
     const botDefs = [
       { name: 'Astra', color: '#ff4fe3', type: 'smart', speed: 190 },

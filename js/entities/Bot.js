@@ -9,6 +9,7 @@ export default class Bot {
     this.color = options.color || '#ff4fe3';
     this.name = options.name || 'BOT';
     this.type = options.type || 'balanced';
+    this.smartLevel = options.smartLevel || 2; // 1=low, 2=medium, 3=high
     this.path = [];
     this.pathCooldown = 0;
   }
@@ -125,19 +126,16 @@ export default class Bot {
     const current = maze.worldToCell(this.x, this.y);
     const goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
 
-    // 1. Recalcula a rota a cada 0.3s ou se o objetivo mudar
     if (this.pathCooldown <= 0 || !this.path.length || this.path[this.path.length - 1][0] !== goal[0] || this.path[this.path.length - 1][1] !== goal[1]) {
       this.path = this.findPath(current, goal, maze);
       this.pathCooldown = 0.3;
     }
 
-    // Fallback caso não encontre caminho
     if (this.path.length < 2) {
       this.fastMove(dt, maze, exitWorld);
       return;
     }
 
-    // 2. Evita o congelamento: Avança o alvo se o bot já estiver dentro da célula alvo
     let nextIndex = 1;
     while (nextIndex < this.path.length && this.path[nextIndex][0] === current[0] && this.path[nextIndex][1] === current[1]) {
       nextIndex++;
@@ -149,23 +147,18 @@ export default class Bot {
     }
 
     const nextCell = this.path[nextIndex];
-
-    // 3. O SEGREDO: Calcula a direção para o CENTRO FÍSICO da próxima célula
     const [targetWorldX, targetWorldY] = maze.getCellCenter(nextCell[0], nextCell[1]);
     const direction = normalizeVector(targetWorldX - this.x, targetWorldY - this.y);
-    
+
     const targetX = this.x + direction.x * this.speed * step;
     const targetY = this.y + direction.y * this.speed * step;
 
-    // 4. Move o bot normalmente se o caminho estiver livre
     if (!this.collides(targetX, targetY, maze)) {
       this.x = targetX;
       this.y = targetY;
       return;
     }
 
-    // 5. Sistema de deslizamento inteligente: se ele bater na quina de uma parede,
-    // ele tenta deslizar nos eixos X ou Y em vez de usar o balancedMove cego.
     const attempts = [
       { x: direction.x, y: 0 },
       { x: 0, y: direction.y }
@@ -184,15 +177,22 @@ export default class Bot {
 
   update(dt, maze, exitWorld) {
     if (!exitWorld) return;
-    if (this.type === 'fast') {
-      this.fastMove(dt, maze, exitWorld);
-      return;
+
+    // Choose move based on smartLevel
+    switch(this.smartLevel) {
+      case 3:
+        this.smartMove(dt, maze, exitWorld);
+        break;
+      case 2:
+        Math.random() < 0.7 ? this.smartMove(dt, maze, exitWorld) : this.balancedMove(dt, maze, exitWorld);
+        break;
+      case 1:
+        Math.random() < 0.4 ? this.smartMove(dt, maze, exitWorld) : this.fastMove(dt, maze, exitWorld);
+        break;
+      default:
+        this.fastMove(dt, maze, exitWorld);
+        break;
     }
-    if (this.type === 'smart') {
-      this.smartMove(dt, maze, exitWorld);
-      return;
-    }
-    this.balancedMove(dt, maze, exitWorld);
   }
 
   draw(ctx) {
