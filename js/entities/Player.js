@@ -7,7 +7,7 @@ export default class Player {
     this.y = y;
     this.maze = maze;
 
-    this.speed = options.speed || 160;
+    this.speed = options.speed || 210;
     this.color = options.color || '#2ef98e';
     this.name = options.name || 'PLAYER';
 
