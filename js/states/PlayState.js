@@ -169,7 +169,7 @@ export default class PlayState {
     if (playerDistance < this.player.size * 0.8) {
       this.levelComplete = true;
       this.winnerName = this.player.name;
-      this.nextMatchCountdown = 5;
+      this.nextMatchCountdown = 3;
       this.juice.localShake(0.5, 1);
       this.game.audio.playerWin(); // <-- MUDOU AQUI!
         if (this.online) this.addRankingPoints(this.player.name);
@@ -183,7 +183,7 @@ export default class PlayState {
         if (botDistance < bot.size * 0.8) {
           this.levelComplete = true;
           this.winnerName = bot.name;
-          this.nextMatchCountdown = 5;
+          this.nextMatchCountdown = 3;
           this.juice.localShake(0.5, 1);
           this.game.audio.botWin(); // <-- MUDOU AQUI!
             this.addRankingPoints(bot.name);
