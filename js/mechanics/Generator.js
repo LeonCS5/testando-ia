@@ -44,6 +44,21 @@ export function generateMaze(width, height) {
     if (inBounds(wx, wy)) grid[wy][wx] = 0;
   }
 
+    // Adicionar mais caminhos adicionais para mais rotas até o centro
+    for (let i = 0; i < 60; i += 1) {
+      const rx = 1 + 2 * Math.floor(Math.random() * ((width - 1) / 2));
+      const ry = 1 + 2 * Math.floor(Math.random() * ((height - 1) / 2));
+      const randomDirs = [...directions].sort(() => Math.random() - 0.5);
+      for (const [dx, dy] of randomDirs) {
+        const wx = rx + dx;
+        const wy = ry + dy;
+        if (inBounds(wx, wy)) {
+          grid[wy][wx] = 0;
+          break;
+        }
+      }
+    }
+
   const openCells = [];
   for (let y = 1; y < height; y += 2) {
     for (let x = 1; x < width; x += 2) {

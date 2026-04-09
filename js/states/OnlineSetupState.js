@@ -65,7 +65,7 @@ export default class OnlineSetupState {
     ctx.fillStyle = '#00ffcc';
     ctx.textAlign = 'center';
     ctx.font = 'bold 36px Segoe UI';
-    ctx.fillText('Online Lobby', this.game.width / 2, this.game.height / 2 - 100);
+      ctx.fillText('Desafiar Bots', this.game.width / 2, this.game.height / 2 - 100);
 
     ctx.font = '18px Segoe UI';
     ctx.fillStyle = '#d6b3ff';

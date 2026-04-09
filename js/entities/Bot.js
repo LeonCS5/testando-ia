@@ -12,6 +12,14 @@ export default class Bot {
     this.smartLevel = options.smartLevel || 2; // 1=low, 2=medium, 3=high
     this.path = [];
     this.pathCooldown = 0;
+    this.maze = options.maze || null;
+    this.updateSize();
+  }
+
+  updateSize() {
+    if (this.maze && Number.isFinite(this.maze.tileSize)) {
+      this.size = this.maze.tileSize * 0.5;
+    }
   }
 
   collides(x, y, maze) {
@@ -176,6 +184,9 @@ export default class Bot {
   }
 
   update(dt, maze, exitWorld) {
+    if (maze) this.maze = maze;
+    this.updateSize();
+    
     if (!exitWorld) return;
 
     // Choose move based on smartLevel

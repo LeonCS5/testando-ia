@@ -17,10 +17,18 @@ export default class PlayState {
     this.timer = config.time;
     this.levelComplete = false;
     this.winnerName = '';
+    this.nextMatchCountdown = 0;
     this.beatCountdown = 1.0; // Começa tocando a cada 1 segundo
     this.online = Boolean(config.online);
     this.playerName = config.playerName || 'PLAYER';
     this.playerColor = config.playerColor || '#2ef98e';
+  }
+
+  addRankingPoints(name, points = 1) {
+    if (!this.online) return;
+    const ranking = JSON.parse(localStorage.getItem('botRanking') || '{}');
+    ranking[name] = (ranking[name] || 0) + points;
+    localStorage.setItem('botRanking', JSON.stringify(ranking));
   }
 
   onEnter() {
@@ -41,6 +49,7 @@ export default class PlayState {
     this.timer = this.config.time;
     this.levelComplete = false;
     this.winnerName = '';
+    this.nextMatchCountdown = 0;
     this.game.audio.shuffleTrack();
   }
 
@@ -49,8 +58,15 @@ export default class PlayState {
     this.exit = [exitCellX, exitCellY];
     this.exitWorld = this.maze.getCellCenter(exitCellX, exitCellY);
 
-    // Encontra uma célula inicial para todos começarem no mesmo lugar
-    const [startCellX, startCellY] = this.maze.randomOpenCellExcluding(new Set([`${exitCellX},${exitCellY}`]));
+    // Spawn único para todos em um canto aleatório
+    const corners = [
+      { x: 1, y: 1 },
+      { x: this.maze.width - 2, y: 1 },
+      { x: 1, y: this.maze.height - 2 },
+      { x: this.maze.width - 2, y: this.maze.height - 2 },
+    ];
+    const corner = corners[Math.floor(Math.random() * corners.length)];
+    const [startCellX, startCellY] = this.maze.getClosestOpenCell(corner.x, corner.y, new Set([`${exitCellX},${exitCellY}`]));
     const [startX, startY] = this.maze.getCellCenter(startCellX, startCellY);
 
     // Cria o player na célula inicial
@@ -59,23 +75,11 @@ export default class PlayState {
       name: this.playerName,
     });
 
-//     //const botDefs = [
-//   { name: 'Astra', color: '#ff4fe3', speed: 190, type: 'smart', smartLevel: 3 },
-//   { name: 'Flux', color: '#4be3ff', speed: 110, type: 'smart', smartLevel: 2 },
-//   { name: 'Nova', color: '#f7ff4f', speed: 145, type: 'smart', smartLevel: 1 },
-// ];
-
-// this.bots = botDefs.map((def, index) => {
-//   const [cx, cy] = startCells[index + 1];
-//   const [x, y] = this.maze.getCellCenter(cx, cy);
-//   return new Bot(x, y, def);
-// });
-    // Cria os bots com definições específicas, todos no mesmo local
     const botDefs = [
-      { name: 'Astra', color: '#ff4fe3', type: 'smart', speed: 190 },
-      { name: 'Flux', color: '#4be3ff', type: 'smart', speed: 110 },
-      { name: 'Nova', color: '#f7ff4f', type: 'smart', speed: 145 },
-    ];
+     { name: 'Astra', color: '#ff4fe3', speed: 210, type: 'smart', smartLevel: 1 },
+     { name: 'Nova', color: '#f7ff4f', speed: 180, type: 'smart', smartLevel: 2 },
+     { name: 'Flux', color: '#4be3ff', speed: 150, type: 'smart', smartLevel: 3 },
+   ];
 
     this.bots = botDefs.map((botDef) => {
       return new Bot(startX, startY, {
@@ -83,7 +87,7 @@ export default class PlayState {
         color: botDef.color,
         type: botDef.type,
         speed: botDef.speed,
-        size: 12,
+        maze: this.maze,
       });
     });
   }
@@ -109,6 +113,10 @@ export default class PlayState {
     }
 
     if (this.levelComplete) {
+      this.nextMatchCountdown = Math.max(0, this.nextMatchCountdown - dt);
+      if (this.nextMatchCountdown <= 0) {
+        this.reset();
+      }
       return;
     }
 
@@ -161,8 +169,10 @@ export default class PlayState {
     if (playerDistance < this.player.size * 0.8) {
       this.levelComplete = true;
       this.winnerName = this.player.name;
+      this.nextMatchCountdown = 5;
       this.juice.localShake(0.5, 1);
       this.game.audio.playerWin(); // <-- MUDOU AQUI!
+        if (this.online) this.addRankingPoints(this.player.name);
       return;
     }
 
@@ -173,8 +183,10 @@ export default class PlayState {
         if (botDistance < bot.size * 0.8) {
           this.levelComplete = true;
           this.winnerName = bot.name;
+          this.nextMatchCountdown = 5;
           this.juice.localShake(0.5, 1);
           this.game.audio.botWin(); // <-- MUDOU AQUI!
+            this.addRankingPoints(bot.name);
           return;
         }
       }
@@ -227,6 +239,18 @@ export default class PlayState {
     if (this.online) {
       ctx.fillStyle = '#ffffff';
       ctx.fillText(`Player: ${this.player.name}`, 14, this.game.height - 84);
+      
+        // Exibir ranking
+        const ranking = JSON.parse(localStorage.getItem('botRanking') || '{}');
+        const rankingEntries = Object.entries(ranking).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        ctx.fillStyle = '#00ffcc';
+        ctx.fillText('RANKING:', this.game.width - 200, 30);
+        ctx.fillStyle = '#d6b3ff';
+        ctx.font = '12px Segoe UI';
+        rankingEntries.forEach((entry, idx) => {
+          ctx.fillText(`${idx + 1}. ${entry[0]}: ${entry[1]}`, this.game.width - 200, 50 + idx * 18);
+        });
+        ctx.font = '16px Segoe UI';
     }
 
     if (this.levelComplete) {
@@ -235,7 +259,7 @@ export default class PlayState {
       ctx.fillStyle = '#00ffcc';
       ctx.fillText(this.winnerName ? `${this.winnerName} won!` : 'Level Complete!', this.game.width / 2, this.game.height / 2);
       ctx.font = '16px Segoe UI';
-      ctx.fillText('Press R to play again', this.game.width / 2, this.game.height / 2 + 32);
+      ctx.fillText(`Next match in ${this.nextMatchCountdown.toFixed(1)}s`, this.game.width / 2, this.game.height / 2 + 32);
       ctx.textAlign = 'left';
     }
   }
