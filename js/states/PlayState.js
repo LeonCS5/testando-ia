@@ -8,7 +8,8 @@ export default class PlayState {
   constructor(game, config) {
     this.game = game;
     this.config = config;
-    this.maze = new Maze(config.width, config.height);
+    this.seedCursor = Number.isFinite(config.seed) ? config.seed : Math.floor(Date.now() % 2147483647);
+    this.maze = new Maze(config.width, config.height, { seed: this.seedCursor });
     this.player = null;
     this.bots = [];
     this.exit = null;
@@ -22,6 +23,18 @@ export default class PlayState {
     this.online = Boolean(config.online);
     this.playerName = config.playerName || 'PLAYER';
     this.playerColor = config.playerColor || '#2ef98e';
+  }
+
+  nextMazeSeed() {
+    const next = this.seedCursor >>> 0;
+    this.seedCursor = (this.seedCursor + 1) >>> 0;
+    return next;
+  }
+
+  random() {
+    if (this.maze && typeof this.maze.nextRandom === 'function') return this.maze.nextRandom();
+    if (this.maze && typeof this.maze.random === 'function') return this.maze.random();
+    return Math.random();
   }
 
   addRankingPoints(name, points = 1) {
@@ -43,7 +56,7 @@ export default class PlayState {
   }
 
   reset() {
-    this.maze.generate();
+    this.maze.generate(this.nextMazeSeed());
     this.maze.setLayout(this.game.width, this.game.height);
     this.placeEntities();
     this.timer = this.config.time;
@@ -65,7 +78,7 @@ export default class PlayState {
       { x: 1, y: this.maze.height - 2 },
       { x: this.maze.width - 2, y: this.maze.height - 2 },
     ];
-    const corner = corners[Math.floor(Math.random() * corners.length)];
+    const corner = corners[Math.floor(this.random() * corners.length)];
     const [startCellX, startCellY] = this.maze.getClosestOpenCell(corner.x, corner.y, new Set([`${exitCellX},${exitCellY}`]));
     const [startX, startY] = this.maze.getCellCenter(startCellX, startCellY);
 
@@ -76,9 +89,9 @@ export default class PlayState {
     });
 
     const botDefs = [
-     { name: 'Astra', color: '#ff4fe3', speed: 210, type: 'smart', smartLevel: 1 },
-     { name: 'Nova', color: '#f7ff4f', speed: 180, type: 'smart', smartLevel: 2 },
-     { name: 'Flux', color: '#4be3ff', speed: 150, type: 'smart', smartLevel: 3 },
+     { name: 'Astra', color: '#ff4fe3', speed: 205, type: 'racer', behavior: 'racer', smartLevel: 3 },
+     { name: 'Nova', color: '#f7ff4f', speed: 175, type: 'explorer', behavior: 'explorer', smartLevel: 2 },
+     { name: 'Flux', color: '#4be3ff', speed: 165, type: 'safe', behavior: 'safe', smartLevel: 3 },
    ];
 
     this.bots = botDefs.map((botDef) => {
@@ -86,10 +99,78 @@ export default class PlayState {
         name: botDef.name,
         color: botDef.color,
         type: botDef.type,
+        behavior: botDef.behavior,
+        smartLevel: botDef.smartLevel,
         speed: botDef.speed,
         maze: this.maze,
+        random: () => this.random(),
       });
     });
+  }
+
+  handleInput(input) {
+    if (input.escape) {
+      this.game.changeState(new MenuState(this.game));
+      return true;
+    }
+
+    if (input.retry) {
+      this.reset();
+      return true;
+    }
+
+    return false;
+  }
+
+  updateBeat(dt) {
+    this.beatCountdown -= dt;
+    if (this.beatCountdown > 0) return;
+
+    const timeRatio = Math.max(0, this.timer / this.config.time);
+    const tension = 1 - timeRatio;
+    this.game.audio.playBeat(tension);
+
+    let nextDelay = 0.1;
+    const track = this.game.audio.currentTrack;
+    if (track === 'cyberpunk') {
+      nextDelay = 0.12 + (timeRatio * 0.10);
+    } else if (track === 'metal') {
+      nextDelay = 0.15 + (timeRatio * 0.10);
+    } else if (track === 'arcade') {
+      nextDelay = 0.20 + (timeRatio * 0.15);
+    }
+    this.beatCountdown = nextDelay;
+  }
+
+  checkWinner() {
+    const [exitX, exitY] = this.exitWorld;
+    const playerDistance = Math.hypot(exitX - this.player.x, exitY - this.player.y);
+
+    if (playerDistance < this.player.size * 0.8) {
+      this.levelComplete = true;
+      this.winnerName = this.player.name;
+      this.nextMatchCountdown = 3;
+      this.juice.localShake(0.5, 1);
+      this.game.audio.playerWin();
+      if (this.online) this.addRankingPoints(this.player.name);
+      return true;
+    }
+
+    if (!this.online) return false;
+    for (const bot of this.bots) {
+      const botDistance = Math.hypot(exitX - bot.x, exitY - bot.y);
+      if (botDistance < bot.size * 0.8) {
+        this.levelComplete = true;
+        this.winnerName = bot.name;
+        this.nextMatchCountdown = 3;
+        this.juice.localShake(0.5, 1);
+        this.game.audio.botWin();
+        this.addRankingPoints(bot.name);
+        return true;
+      }
+    }
+
+    return false;
   }
 
   findCentralOpenCell() {
@@ -102,13 +183,7 @@ export default class PlayState {
   }
 
   update(dt, input) {
-    if (input.escape) {
-      this.game.changeState(new MenuState(this.game));
-      return;
-    }
-
-    if (input.retry) {
-      this.reset();
+    if (this.handleInput(input)) {
       return;
     }
 
@@ -123,74 +198,19 @@ export default class PlayState {
     this.timer -= dt;
     if (this.timer <= 0) {
       this.juice.triggerGlitch();
-      this.game.audio.timeOut(); // <-- MUDOU AQUI (som de erro quando o tempo acaba)
+      this.game.audio.timeOut();
       this.reset();
       return;
     }
 
     this.juice.update(dt);
-    // --- MAESTRO DA TRILHA SONORA TURBO ---
-    this.beatCountdown -= dt;
-    if (this.beatCountdown <= 0) {
-      const timeRatio = Math.max(0, this.timer / this.config.time);
-      const tension = 1 - timeRatio;
-      
-      this.game.audio.playBeat(tension);
-      
-      let nextDelay = 0.1;
-      const track = this.game.audio.currentTrack;
-      
-      if (track === 'cyberpunk') {
-        // Começa rápido (0.14s) e termina insano (0.08s)
-        // Isso é cerca de 420 a 750 BPM por passo!
-        nextDelay = 0.12 + (timeRatio * 0.10); 
-      } 
-      else if (track === 'metal') {
-        // Começa pesado (0.20s) e termina frenético (0.12s)
-        nextDelay = 0.15 + (timeRatio * 0.10); 
-      } 
-      else if (track === 'arcade') {
-        // Começa agitado (0.25s) e termina rápido (0.15s)
-        nextDelay = 0.20 + (timeRatio * 0.15); 
-      }
-      
-      this.beatCountdown = nextDelay;
-    }
-    // ---------------------------------------
+    this.updateBeat(dt);
     this.player.update(dt, input, this.maze, this.juice, this.game.audio);
     if (this.online) {
-      this.bots.forEach((bot) => bot.update(dt, this.maze, this.exitWorld));
+      this.bots.forEach((bot) => bot.update(dt, this.maze, this.exitWorld, this.bots));
     }
 
-    const [exitX, exitY] = this.exitWorld;
-    const playerDistance = Math.hypot(exitX - this.player.x, exitY - this.player.y);
-    
-    // --- 1. VITÓRIA DO JOGADOR ---
-    if (playerDistance < this.player.size * 0.8) {
-      this.levelComplete = true;
-      this.winnerName = this.player.name;
-      this.nextMatchCountdown = 3;
-      this.juice.localShake(0.5, 1);
-      this.game.audio.playerWin(); // <-- MUDOU AQUI!
-        if (this.online) this.addRankingPoints(this.player.name);
-      return;
-    }
-
-    // --- 2. VITÓRIA DOS BOTS ---
-    if (this.online) {
-      for (const bot of this.bots) {
-        const botDistance = Math.hypot(exitX - bot.x, exitY - bot.y);
-        if (botDistance < bot.size * 0.8) {
-          this.levelComplete = true;
-          this.winnerName = bot.name;
-          this.nextMatchCountdown = 3;
-          this.juice.localShake(0.5, 1);
-          this.game.audio.botWin(); // <-- MUDOU AQUI!
-            this.addRankingPoints(bot.name);
-          return;
-        }
-      }
-    }
+    this.checkWinner();
   }
 
   draw(ctx, timestamp) {

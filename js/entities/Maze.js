@@ -1,11 +1,13 @@
 import { TILE_SIZE } from '../constants.js';
-import { generateMaze } from '../mechanics/Generator.js';
+import { createSeededRandom, generateMaze } from '../mechanics/Generator.js';
 
 export default class Maze {
-  constructor(width, height) {
+  constructor(width, height, options = {}) {
     this.tileSize = TILE_SIZE;
     this.width = width;
     this.height = height;
+    this.seed = Number.isFinite(options.seed) ? options.seed : Math.floor(Date.now() % 2147483647);
+    this.rng = createSeededRandom(this.seed);
     this.originX = 0;
     this.originY = 0;
     this.grid = [];
@@ -13,10 +15,23 @@ export default class Maze {
     this.generate();
   }
 
-  generate() {
-    const result = generateMaze(this.width, this.height);
+  generate(seed = this.seed) {
+    if (Number.isFinite(seed)) {
+      this.seed = seed;
+    }
+    const result = generateMaze(this.width, this.height, this.seed);
     this.grid = result.grid;
     this.openCells = result.openCells;
+    this.rng = createSeededRandom(this.seed + 1337);
+  }
+
+  nextRandom() {
+    return this.rng();
+  }
+
+  // Backward-compatible alias used by existing states/entities.
+  random() {
+    return this.nextRandom();
   }
 
 setLayout(screenWidth, screenHeight) {
@@ -47,13 +62,13 @@ setLayout(screenWidth, screenHeight) {
   }
 
   randomOpenCell() {
-    return this.openCells[Math.floor(Math.random() * this.openCells.length)] || [1, 1];
+    return this.openCells[Math.floor(this.nextRandom() * this.openCells.length)] || [1, 1];
   }
 
   randomOpenCellExcluding(exclude = new Set()) {
     const choices = this.openCells.filter((cell) => !exclude.has(`${cell[0]},${cell[1]}`));
     if (choices.length === 0) return this.randomOpenCell();
-    return choices[Math.floor(Math.random() * choices.length)];
+    return choices[Math.floor(this.nextRandom() * choices.length)];
   }
 
   getCellCenter(cellX, cellY) {

@@ -1,4 +1,15 @@
-export function generateMaze(width, height) {
+export function createSeededRandom(seed = Date.now()) {
+  let value = (seed >>> 0) || 1;
+  return () => {
+    value = (value + 0x6D2B79F5) | 0;
+    let t = Math.imul(value ^ (value >>> 15), 1 | value);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function generateMaze(width, height, seed = Date.now()) {
+  const random = createSeededRandom(seed);
   const grid = Array.from({ length: height }, () => Array(width).fill(1));
   const inBounds = (x, y) => x > 0 && x < width - 1 && y > 0 && y < height - 1;
   const directions = [
@@ -28,17 +39,17 @@ export function generateMaze(width, height) {
       continue;
     }
 
-    const [nx, ny] = neighbors[Math.floor(Math.random() * neighbors.length)];
+    const [nx, ny] = neighbors[Math.floor(random() * neighbors.length)];
     grid[ny][nx] = 0;
     grid[cy + (ny - cy) / 2][cx + (nx - cx) / 2] = 0;
     stack.push([nx, ny]);
   }
 
   for (let i = 0; i < 35; i += 1) {
-    const rx = 1 + 2 * Math.floor(Math.random() * ((width - 1) / 2));
-    const ry = 1 + 2 * Math.floor(Math.random() * ((height - 1) / 2));
+    const rx = 1 + 2 * Math.floor(random() * ((width - 1) / 2));
+    const ry = 1 + 2 * Math.floor(random() * ((height - 1) / 2));
     grid[ry][rx] = 0;
-    const dir = directions[Math.floor(Math.random() * directions.length)];
+    const dir = directions[Math.floor(random() * directions.length)];
     const wx = rx + dir[0];
     const wy = ry + dir[1];
     if (inBounds(wx, wy)) grid[wy][wx] = 0;
@@ -46,9 +57,9 @@ export function generateMaze(width, height) {
 
     // Adicionar mais caminhos adicionais para mais rotas até o centro
     for (let i = 0; i < 60; i += 1) {
-      const rx = 1 + 2 * Math.floor(Math.random() * ((width - 1) / 2));
-      const ry = 1 + 2 * Math.floor(Math.random() * ((height - 1) / 2));
-      const randomDirs = [...directions].sort(() => Math.random() - 0.5);
+      const rx = 1 + 2 * Math.floor(random() * ((width - 1) / 2));
+      const ry = 1 + 2 * Math.floor(random() * ((height - 1) / 2));
+      const randomDirs = [...directions].sort(() => random() - 0.5);
       for (const [dx, dy] of randomDirs) {
         const wx = rx + dx;
         const wy = ry + dy;
@@ -68,5 +79,5 @@ export function generateMaze(width, height) {
     }
   }
 
-  return { grid, openCells };
+  return { grid, openCells, seed };
 }
