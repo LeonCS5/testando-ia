@@ -1,9 +1,15 @@
 import MenuState from './MenuState.js';
 import PlayState from './PlayState.js';
+import { ONLINE_DEFAULT_MODE, cloneMode } from '../config/gameModes.js';
 
 export default class OnlineSetupState {
-  constructor(game) {
+  constructor(game, modeConfig = {}) {
     this.game = game;
+    const resolvedMode = this.resolveModeConfig(modeConfig || game.pendingModeConfig || {});
+    this.modeConfig = {
+      ...resolvedMode,
+      online: true,
+    };
     this.onlineName = 'PLAYER';
     this.colors = [
       { label: 'Neon Green',    value: '#2ef98e' },
@@ -13,6 +19,27 @@ export default class OnlineSetupState {
     ];
     this.selectedColorIndex = 0;
     this.cooldown = 0;
+  }
+
+  resolveModeConfig(modeConfig) {
+    const baseMode = cloneMode(ONLINE_DEFAULT_MODE || {
+      modeId: 'challenge-bots',
+      label: 'Desafiar Bots',
+      width: 31,
+      height: 31,
+      time: 48,
+      online: true,
+      liveMaze: false,
+    });
+    const merged = { ...baseMode, ...modeConfig };
+    const isLiveFromLabel = merged.label === 'Labirinto Vivo';
+    const isLiveFromModeId = merged.modeId === 'live-maze';
+
+    return {
+      ...merged,
+      online: true,
+      liveMaze: Boolean(merged.liveMaze || isLiveFromLabel || isLiveFromModeId),
+    };
   }
 
   onEnter() {
@@ -42,13 +69,11 @@ export default class OnlineSetupState {
 
     if (input.enter) {
       const config = {
-        online: true,
-        width: 31,
-        height: 31,
-        time: 48,
+        ...this.modeConfig,
         playerName: this.onlineName.trim() || 'PLAYER',
         playerColor: this.colors[this.selectedColorIndex].value,
       };
+      this.game.pendingModeConfig = null;
       this.game.changeState(new PlayState(this.game, config));
     }
 
@@ -65,12 +90,13 @@ export default class OnlineSetupState {
     ctx.fillStyle = '#00ffcc';
     ctx.textAlign = 'center';
     ctx.font = 'bold 36px Segoe UI';
-      ctx.fillText('Desafiar Bots', this.game.width / 2, this.game.height / 2 - 100);
+    ctx.fillText(this.modeConfig.label, this.game.width / 2, this.game.height / 2 - 100);
 
     ctx.font = '18px Segoe UI';
     ctx.fillStyle = '#d6b3ff';
     ctx.fillText('Type your name and use ← / → to select color', this.game.width / 2, this.game.height / 2 - 60);
     ctx.fillText('Press ENTER to start match, ESC to cancel', this.game.width / 2, this.game.height / 2 - 30);
+    ctx.fillText(`Mode: ${this.modeConfig.width}x${this.modeConfig.height} | ${this.modeConfig.time}s`, this.game.width / 2, this.game.height / 2 - 5);
 
     ctx.font = '24px Segoe UI';
     ctx.fillStyle = '#ffffff';

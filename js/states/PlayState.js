@@ -1,15 +1,23 @@
 import Maze from '../entities/Maze.js';
 import Player from '../entities/Player.js';
-import Bot from '../entities/Bot.js';
 import Juice from '../mechanics/Juice.js';
 import MenuState from './MenuState.js';
+import LiveMaze from '../entities/LiveMaze.js';
+import { BOT_ROSTER } from '../config/botRoster.js';
 
 export default class PlayState {
   constructor(game, config) {
     this.game = game;
     this.config = config;
     this.seedCursor = Number.isFinite(config.seed) ? config.seed : Math.floor(Date.now() % 2147483647);
-    this.maze = new Maze(config.width, config.height, { seed: this.seedCursor });
+
+    const resolvedModeId = config.modeId || 'custom';
+    const resolvedIsLiveMaze = Boolean(config.liveMaze || resolvedModeId === 'live-maze' || config.label === 'Labirinto Vivo');
+
+    // Usa LiveMaze se liveMaze estiver ativo, senão usa Maze normal
+    const MazeClass = resolvedIsLiveMaze ? LiveMaze : Maze;
+    this.maze = new MazeClass(config.width, config.height, { seed: this.seedCursor });
+    
     this.player = null;
     this.bots = [];
     this.exit = null;
@@ -21,6 +29,8 @@ export default class PlayState {
     this.nextMatchCountdown = 0;
     this.beatCountdown = 1.0; // Começa tocando a cada 1 segundo
     this.online = Boolean(config.online);
+    this.modeId = resolvedModeId;
+    this.isLiveMaze = resolvedIsLiveMaze;
     this.playerName = config.playerName || 'PLAYER';
     this.playerColor = config.playerColor || '#2ef98e';
   }
@@ -88,23 +98,43 @@ export default class PlayState {
       name: this.playerName,
     });
 
-    const botDefs = [
-     { name: 'Astra', color: '#ff4fe3', speed: 205, type: 'racer', behavior: 'racer', smartLevel: 3 },
-     { name: 'Nova', color: '#f7ff4f', speed: 175, type: 'explorer', behavior: 'explorer', smartLevel: 2 },
-     { name: 'Flux', color: '#4be3ff', speed: 165, type: 'safe', behavior: 'safe', smartLevel: 3 },
-   ];
+    this.bots = this.createBots(startX, startY);
+  }
 
-    this.bots = botDefs.map((botDef) => {
-      return new Bot(startX, startY, {
-        name: botDef.name,
-        color: botDef.color,
-        type: botDef.type,
-        behavior: botDef.behavior,
-        smartLevel: botDef.smartLevel,
-        speed: botDef.speed,
+  createBots(startX, startY) {
+    return BOT_ROSTER.map((BotClass) => {
+      return new BotClass(startX, startY, {
         maze: this.maze,
         random: () => this.random(),
       });
+    });
+  }
+
+  updateLiveMaze(dt) {
+    if (!this.isLiveMaze || typeof this.maze.update !== 'function') return;
+    this.maze.update(dt);
+  }
+
+  applyLiveMazePush(entity, dt, allowShake = false) {
+    if (!this.isLiveMaze || typeof this.maze.getPushVectorFromWall !== 'function') return;
+
+    const push = this.maze.getPushVectorFromWall(entity.x, entity.y);
+    if (push.strength <= 0) return;
+
+    entity.x += push.x * dt * 0.25;
+    entity.y += push.y * dt * 0.25;
+
+    if (allowShake && push.strength > 1) {
+      this.juice.localShake(0.3, push.strength * 1.5);
+    }
+  }
+
+  updateBots(dt) {
+    if (!this.online) return;
+
+    this.bots.forEach((bot) => {
+      bot.update(dt, this.maze, this.exitWorld, this.bots);
+      this.applyLiveMazePush(bot, dt, false);
     });
   }
 
@@ -205,10 +235,12 @@ export default class PlayState {
 
     this.juice.update(dt);
     this.updateBeat(dt);
+
+    this.updateLiveMaze(dt);
     this.player.update(dt, input, this.maze, this.juice, this.game.audio);
-    if (this.online) {
-      this.bots.forEach((bot) => bot.update(dt, this.maze, this.exitWorld, this.bots));
-    }
+
+    this.applyLiveMazePush(this.player, dt, true);
+    this.updateBots(dt);
 
     this.checkWinner();
   }
@@ -253,6 +285,16 @@ export default class PlayState {
     ctx.fillStyle = '#d6b3ff';
     ctx.font = '16px Segoe UI';
     ctx.fillText(`Time: ${this.timer.toFixed(1)}s`, 14, this.game.height - 24);
+    
+    // Mostra "Labirinto Vivo" se ativo
+    if (this.isLiveMaze) {
+      ctx.fillStyle = '#00ff88';
+      ctx.font = 'bold 18px Segoe UI';
+      ctx.fillText('⚡ LABIRINTO VIVO ⚡', 14, 40);
+      ctx.fillStyle = '#d6b3ff';
+      ctx.font = '16px Segoe UI';
+    }
+    
     ctx.fillText(`Maze regenerates in: ${Math.max(0, this.timer).toFixed(1)}s`, 14, this.game.height - 44);
     ctx.fillText('Press ESC for menu, R to restart', 14, this.game.height - 64);
 

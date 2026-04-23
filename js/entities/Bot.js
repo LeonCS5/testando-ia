@@ -73,8 +73,10 @@ export default class Bot {
     this.lastPlannedFrom = null;
     this.prevDistToNext = Infinity;
     this.noProgressFrames = 0;
-    this.maxNoProgressFrames = 16;
+    this.maxNoProgressFrames = 24;
     this.deviationCooldown = 0;
+    this.hesitationTimer = 0; // For low-level hesitation
+    this.avoidOtherBots = Boolean(options.avoidOtherBots);
     this.localRandom = typeof options.random === 'function' ? options.random : Math.random;
     this.maze = options.maze || null;
     this.updateSize();
@@ -102,7 +104,15 @@ export default class Bot {
   }
 
   heuristic(a, b) {
-    return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+    const manhattan = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+    
+    // Low-level bots have confused heuristic
+    if (this.smartLevel === 1) {
+      const confusion = this.localRandom() * manhattan * 0.4;
+      return manhattan + confusion;
+    }
+    
+    return manhattan;
   }
 
   toKey(cell) {
@@ -204,21 +214,60 @@ export default class Bot {
   }
 
   moveWithAxisCollision(deltaX, deltaY, maze) {
-    if (deltaX !== 0) {
-      const nextX = this.x + deltaX;
-      if (!this.collides(nextX, this.y, maze)) {
-        this.x = nextX;
-      }
-    }
-    if (deltaY !== 0) {
-      const nextY = this.y + deltaY;
-      if (!this.collides(this.x, nextY, maze)) {
-        this.y = nextY;
-      }
+    const movedX = this.tryMove(deltaX, 0, maze);
+    const movedY = this.tryMove(0, deltaY, maze);
+    
+    // If both directions have movement needed, try diagonal for smooth corners
+    if (!movedX && !movedY && deltaX !== 0 && deltaY !== 0) {
+      // Try half-steps in both directions
+      this.tryMove(deltaX * 0.5, deltaY * 0.5, maze);
     }
   }
 
+  tryMove(deltaX, deltaY, maze) {
+    if (deltaX === 0 && deltaY === 0) return false;
+    
+    const nextX = this.x + deltaX;
+    const nextY = this.y + deltaY;
+    
+    if (!this.collides(nextX, nextY, maze)) {
+      this.x = nextX;
+      this.y = nextY;
+      return true;
+    }
+    
+    // Try partial movements on fail
+    if (deltaX !== 0 && !this.collides(nextX, this.y, maze)) {
+      this.x = nextX;
+      return true;
+    }
+    if (deltaY !== 0 && !this.collides(this.x, nextY, maze)) {
+      this.y = nextY;
+      return true;
+    }
+    
+    // Try half-step in primary direction
+    const halfX = this.x + deltaX * 0.5;
+    const halfY = this.y + deltaY * 0.5;
+    if (!this.collides(halfX, this.y, maze)) {
+      this.x = halfX;
+      return true;
+    }
+    if (!this.collides(this.x, halfY, maze)) {
+      this.y = halfY;
+      return true;
+    }
+    
+    return false;
+  }
+
   moveTowardsCell(dt, maze, targetCell, separationOffset = { x: 0, y: 0 }) {
+    // Low-level hesitation
+    if (this.hesitationTimer > 0) {
+      this.hesitationTimer -= 1;
+      return false;
+    }
+
     const [targetX, targetY] = maze.getCellCenter(targetCell[0], targetCell[1]);
     const adjustedTargetX = targetX + separationOffset.x;
     const adjustedTargetY = targetY + separationOffset.y;
@@ -233,12 +282,17 @@ export default class Bot {
       return true;
     }
 
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      const stepX = Math.sign(dx) * Math.min(Math.abs(dx), maxStep);
-      this.moveWithAxisCollision(stepX, 0, maze);
-    } else {
-      const stepY = Math.sign(dy) * Math.min(Math.abs(dy), maxStep);
-      this.moveWithAxisCollision(0, stepY, maze);
+    // Calculate movement steps for both axes
+    const stepX = Math.sign(dx) * Math.min(Math.abs(dx), maxStep);
+    const stepY = Math.sign(dy) * Math.min(Math.abs(dy), maxStep);
+    
+    // Try to move diagonally when both axes need movement (smooth corners!)
+    if (stepX !== 0 && stepY !== 0) {
+      this.moveWithAxisCollision(stepX, stepY, maze);
+    } else if (stepX !== 0) {
+      this.tryMove(stepX, 0, maze);
+    } else if (stepY !== 0) {
+      this.tryMove(0, stepY, maze);
     }
 
     return false;
@@ -246,6 +300,7 @@ export default class Bot {
 
   buildOccupancyMap(others) {
     const occupancy = new Map();
+    if (!this.avoidOtherBots) return occupancy;
     if (!Array.isArray(others)) return occupancy;
     for (const other of others) {
       if (!other || other === this) continue;
@@ -256,7 +311,41 @@ export default class Bot {
     return occupancy;
   }
 
+  getCorridorCenterOffset(targetCell, maze) {
+    // Detect walls around target cell and push bot away from them
+    const dirs = [
+      { dx: 0, dy: -1, px: 0, py: -1 },  // up
+      { dx: 0, dy: 1, px: 0, py: 1 },    // down
+      { dx: -1, dy: 0, px: -1, py: 0 },  // left
+      { dx: 1, dy: 0, px: 1, py: 0 },    // right
+    ];
+
+    let pushX = 0;
+    let pushY = 0;
+    let wallCount = 0;
+
+    for (const dir of dirs) {
+      const nx = targetCell[0] + dir.dx;
+      const ny = targetCell[1] + dir.dy;
+      if (maze.isWallCell(nx, ny)) {
+        wallCount += 1;
+        // Push away from wall direction
+        pushX -= dir.px * 0.3;
+        pushY -= dir.py * 0.3;
+      }
+    }
+
+    if (wallCount === 0) return { x: 0, y: 0 };
+    
+    const magnitude = Math.min(wallCount * maze.tileSize * 0.12, maze.tileSize * 0.25);
+    if (pushX === 0 && pushY === 0) return { x: 0, y: 0 };
+    
+    const v = normalizeVector(pushX, pushY);
+    return { x: v.x * magnitude, y: v.y * magnitude };
+  }
+
   getSeparationOffset(others, maze) {
+    if (!this.avoidOtherBots) return { x: 0, y: 0 };
     if (!Array.isArray(others) || others.length === 0) return { x: 0, y: 0 };
     let repelX = 0;
     let repelY = 0;
@@ -290,7 +379,12 @@ export default class Bot {
     const movedTooFar = this.lastPlannedFrom
       ? this.heuristic(current, this.lastPlannedFrom) > 3
       : false;
-    const stalled = this.noProgressFrames >= this.maxNoProgressFrames;
+    
+    // Level-based stall thresholds
+    let stalledThreshold = this.maxNoProgressFrames;
+    if (this.smartLevel === 1) stalledThreshold = this.maxNoProgressFrames + 8;
+    else if (this.smartLevel === 2) stalledThreshold = this.maxNoProgressFrames + 4;
+    const stalled = this.noProgressFrames >= stalledThreshold;
 
     return goalChanged || pathInvalid || !hasPath || outOfBoundsIndex || noNextNode || blockedByWall || movedTooFar || stalled;
   }
@@ -298,6 +392,21 @@ export default class Bot {
   selectNextCell(current, maze) {
     if (this.path.length === 0 || this.pathIndex + 1 >= this.path.length) return null;
     let nextCell = this.path[this.pathIndex + 1];
+
+    // Level 1: Sometimes pick random adjacent cell (looks confused)
+    if (this.smartLevel === 1) {
+      const confusionChance = 0.08;
+      if (this.localRandom() < confusionChance) {
+        const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        const candidates = dirs
+          .map(([dx, dy]) => [current[0] + dx, current[1] + dy])
+          .filter(([x, y]) => !maze.isWallCell(x, y));
+        if (candidates.length > 0) {
+          nextCell = candidates[Math.floor(this.localRandom() * candidates.length)];
+          this.hesitationTimer = 3;
+        }
+      }
+    }
 
     if (this.behavior === 'explorer') {
       this.deviationCooldown = Math.max(0, this.deviationCooldown - 1);
@@ -374,7 +483,9 @@ export default class Bot {
 
     let bestCell = null;
     let bestScore = Infinity;
-    const safeWeight = this.behavior === 'safe' ? 0.65 : 0.18;
+    const safeWeight = this.avoidOtherBots
+      ? (this.behavior === 'safe' ? 0.65 : 0.18)
+      : 0;
 
     for (const [dx, dy] of dirs) {
       const nx = current[0] + dx;
@@ -396,7 +507,7 @@ export default class Bot {
     const current = maze.worldToCell(this.x, this.y);
     const goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
     const occupancy = this.buildOccupancyMap(others);
-    const occupancyWeight = this.behavior === 'safe' ? 0.7 : 0;
+    const occupancyWeight = this.avoidOtherBots && this.behavior === 'safe' ? 0.7 : 0;
 
     if (this.shouldRepath(current, goal, maze)) {
       const newPath = this.findPath(current, goal, maze, occupancy, occupancyWeight);
@@ -412,9 +523,16 @@ export default class Bot {
 
     const nextCell = this.selectNextCell(current, maze);
     const targetCell = nextCell || this.greedyFallbackCell(current, goal, maze, occupancy) || goal;
+    
+    // Combine corridor center offset with separation offset
+    const corridorOffset = this.getCorridorCenterOffset(targetCell, maze);
     const separationOffset = this.getSeparationOffset(others, maze);
+    const combinedOffset = {
+      x: corridorOffset.x + separationOffset.x,
+      y: corridorOffset.y + separationOffset.y
+    };
 
-    const reached = this.moveTowardsCell(dt, maze, targetCell, separationOffset);
+    const reached = this.moveTowardsCell(dt, maze, targetCell, combinedOffset);
     if (reached && nextCell && targetCell[0] === nextCell[0] && targetCell[1] === nextCell[1]) {
       this.pathIndex = Math.min(this.pathIndex + 1, Math.max(0, this.path.length - 1));
     }
@@ -430,8 +548,11 @@ export default class Bot {
     
     if (!exitWorld) return;
 
-    // Keep old API fallback: smartLevel now only scales speed aggressiveness.
-    const speedFactor = this.smartLevel >= 3 ? 1.0 : this.smartLevel === 2 ? 0.94 : 0.9;
+    // Speed factors based on smartLevel
+    // Level 1 (Low): More erratic, delayed reactions
+    // Level 2 (Medium): Slightly slower reaction + movement
+    // Level 3 (High): Full speed
+    const speedFactor = this.smartLevel >= 3 ? 1.0 : this.smartLevel === 2 ? 0.92 : 0.85;
     const baseSpeed = this.speed;
     this.speed = baseSpeed * speedFactor;
     this.smartMove(dt, maze, exitWorld, others);

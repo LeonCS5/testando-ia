@@ -1,15 +1,11 @@
 import PlayState from './PlayState.js';
 import OnlineSetupState from './OnlineSetupState.js';
+import { GAME_MODES, cloneMode } from '../config/gameModes.js';
 
 export default class MenuState {
   constructor(game) {
     this.game = game;
-    this.options = [
-      { label: 'Easy', width: 21, height: 21, time: 15, online: false },
-      { label: 'Medium', width: 31, height: 31, time: 22, online: false },
-      { label: 'Hard', width: 41, height: 41, time: 30, online: false },
-        { label: 'Desafiar Bots', width: 31, height: 31, time: 48, online: true },
-    ];
+    this.options = GAME_MODES.map((mode) => cloneMode(mode));
     this.selectedIndex = 0;
     this.cooldown = 0;
   }
@@ -31,9 +27,10 @@ export default class MenuState {
     }
 
     if (input.enter) {
-      const selected = this.options[this.selectedIndex];
+      const selected = cloneMode(this.options[this.selectedIndex]);
+      this.game.pendingModeConfig = cloneMode(selected);
       if (selected.online) {
-        this.game.changeState(new OnlineSetupState(this.game));
+        this.game.changeState(new OnlineSetupState(this.game, selected));
       } else {
         this.game.changeState(new PlayState(this.game, selected));
       }
