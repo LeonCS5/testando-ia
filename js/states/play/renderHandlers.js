@@ -89,6 +89,7 @@ export function drawPlayState(state, ctx, timestamp) {
   state.juice.drawParticles(ctx);
   ctx.restore();
   state.juice.drawGlitch(ctx, state.game.width, state.game.height);
+  state.juice.drawJumpscare(ctx, state.game.width, state.game.height);
   drawHud(state, ctx);
   ctx.restore();
 }

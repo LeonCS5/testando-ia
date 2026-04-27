@@ -54,21 +54,21 @@ export default class JumpscareBot extends Bot {
           if (target === state.player) {
             // Bateu no jogador! Dá o Jumpscare!
             if (state.juice) {
-               state.juice.localShake(1.5, 6); // Tremedeira monstruosa
-               if (typeof state.juice.triggerGlitch === 'function') {
-                 state.juice.triggerGlitch();
-                 state.juice.triggerGlitch(); // Chama duplo para forçar glitch longo
+               state.juice.localShake(2.5, 10); // Tremedeira monstruosa
+               if (typeof state.juice.triggerJumpscare === 'function') {
+                 state.juice.triggerJumpscare();
                }
             }
             if (state.game && state.game.audio && typeof state.game.audio.wallHit === 'function') {
                state.game.audio.wallHit(); 
             }
+            this.jumpscareCooldown = 0.5; // Cooldown baixo pro player
           } else {
             // Se for bot, apenas amaldiçoa e deixa ele parado por 3 segundos
             target.cursedTimer = 3;
+            this.jumpscareCooldown = 0.5; // Cooldown baixo pros bots tbm
           }
           
-          this.jumpscareCooldown = 4; // Fica inativo por 4 segundos após o susto
           this.pickRandomDirection(); // Muda o rumo
           break;
         }
@@ -89,13 +89,6 @@ export default class JumpscareBot extends Bot {
     // "Aura" / Sombra do jumpscare
     ctx.shadowColor = '#ff0000';
     ctx.shadowBlur = 10 * pulse;
-
-    // Olhos vermelhos brilhantes
-    ctx.fillStyle = '#ff0000';
-    ctx.beginPath();
-    ctx.arc(this.x - this.size * 0.4, this.y - this.size * 0.2, this.size * 0.25, 0, Math.PI * 2);
-    ctx.arc(this.x + this.size * 0.4, this.y - this.size * 0.2, this.size * 0.25, 0, Math.PI * 2);
-    ctx.fill();
 
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1.0;

@@ -7,6 +7,7 @@ export default class Juice {
     this.shakeTimer = 0;
     this.shakePower = 0;
     this.glitchTimer = 0;
+    this.jumpscareActiveTimer = 0;
   }
 
   spawnTrail(x, y) {
@@ -35,12 +36,19 @@ export default class Juice {
     this.glitchTimer = 0.25;
   }
 
+  triggerJumpscare() {
+    this.jumpscareActiveTimer = 0.8; // Quase 1 segundo de susto
+  }
+
   update(dt) {
     if (this.shakeTimer > 0) {
       this.shakeTimer = Math.max(0, this.shakeTimer - dt);
     }
     if (this.glitchTimer > 0) {
       this.glitchTimer = Math.max(0, this.glitchTimer - dt);
+    }
+    if (this.jumpscareActiveTimer > 0) {
+      this.jumpscareActiveTimer = Math.max(0, this.jumpscareActiveTimer - dt);
     }
 
     this.particles.forEach((particle) => particle.update(dt));
@@ -64,6 +72,41 @@ export default class Juice {
       const y = Math.random() * height;
       const h = 4 + Math.random() * 16;
       ctx.fillStyle = `rgba(255, 0, 214, ${alpha * 0.5})`;
+      ctx.fillRect(0, y, width, h);
+    }
+  }
+
+  drawJumpscare(ctx, width, height) {
+    if (this.jumpscareActiveTimer <= 0) return;
+    
+    // Fundo vermelho sangue e pulsante
+    const alpha = (this.jumpscareActiveTimer / 0.8);
+    ctx.fillStyle = Math.random() > 0.5 ? `rgba(255, 0, 0, ${alpha * 0.9})` : `rgba(0, 0, 0, ${alpha * 0.9})`;
+    ctx.fillRect(0, 0, width, height);
+
+    // Dentes/Estacas assustadoras nas bordas
+    ctx.fillStyle = '#000000';
+    for(let i = 0; i < 15; i++) {
+      ctx.beginPath();
+      const px = Math.random() * width;
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px - 40 + Math.random() * 80, 50 + Math.random() * 200);
+      ctx.lineTo(px + 40 + Math.random() * 80, 0);
+      ctx.fill();
+
+      ctx.beginPath();
+      const bx = Math.random() * width;
+      ctx.moveTo(bx, height);
+      ctx.lineTo(bx - 40 + Math.random() * 80, height - 50 - Math.random() * 200);
+      ctx.lineTo(bx + 40 + Math.random() * 80, height);
+      ctx.fill();
+    }
+
+    // Estática brutal no meio da tela
+    for (let i = 0; i < 30; i += 1) {
+      const y = Math.random() * height;
+      const h = 5 + Math.random() * 50;
+      ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ff0000';
       ctx.fillRect(0, y, width, h);
     }
   }
