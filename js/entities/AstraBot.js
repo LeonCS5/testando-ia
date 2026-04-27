@@ -1,3 +1,4 @@
+// Bot Astra: perfil de IA configurado para estilo de corrida mais agressivo.
 import Bot from './Bot.js';
 
 /**
@@ -12,7 +13,7 @@ export default class AstraBot extends Bot {
       speed: 205,
       type: 'racer',
       behavior: 'racer',
-      smartLevel: 1,
+      smartLevel: 1, // Fast but less strategic
       ...options, // Allow overrides
     });
   }

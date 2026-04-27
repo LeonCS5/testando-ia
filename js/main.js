@@ -1,3 +1,4 @@
+// Ponto de entrada do jogo: cria dependencias, inicia o Game e gerencia resize da tela.
 import Game from './core/Game.js';
 import Input from './core/Input.js';
 import Audio from './core/Audio.js';

@@ -1,3 +1,4 @@
+// Utilitarios matematicos reaproveitados por entidades e logicas de movimento.
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }

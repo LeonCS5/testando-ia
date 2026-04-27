@@ -1,3 +1,4 @@
+// Variante de Maze com paredes moveis e empurrao para criar o modo labirinto vivo.
 import Maze from './Maze.js';
 
 /**

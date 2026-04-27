@@ -1,3 +1,4 @@
+// Entidade de labirinto estatico: gera grade, layout na tela e consultas de colisao.
 import { TILE_SIZE } from '../constants.js';
 import { createSeededRandom, generateMaze } from '../mechanics/Generator.js';
 

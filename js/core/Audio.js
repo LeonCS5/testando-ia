@@ -1,3 +1,4 @@
+// Motor de audio: efeitos sonoros e trilhas dinamicas geradas via WebAudio.
 export default class Audio {
   constructor() {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -6,6 +7,11 @@ export default class Audio {
     this.playlist = ['cyberpunk', 'metal', 'arcade']; 
     this.currentTrack = 'cyberpunk'; 
     this.step = 0; 
+    this.trackPlayers = {
+      cyberpunk: (tension) => this.playCyberpunk(tension),
+      metal: (tension) => this.playMetal(tension),
+      arcade: (tension) => this.playArcade(tension),
+    };
   }
 
   resume() {
@@ -20,7 +26,6 @@ export default class Audio {
     const randomIndex = Math.floor(Math.random() * this.playlist.length);
     this.currentTrack = this.playlist[randomIndex];
     this.step = 0; // Zera a contagem para a música não começar atravessada
-    console.log("Tocando agora a trilha:", this.currentTrack);
   }
 
   // --- MOTOR DE ÁUDIO E EFEITOS BASE ---
@@ -147,14 +152,8 @@ export default class Audio {
   
   playBeat(tension = 0) {
     this.step++; // Avança um passo no tempo eternamente
-
-    if (this.currentTrack === 'cyberpunk') {
-      this.playCyberpunk(tension);
-    } else if (this.currentTrack === 'metal') {
-      this.playMetal(tension);
-    } else if (this.currentTrack === 'arcade') {
-      this.playArcade(tension);
-    }
+    const playTrack = this.trackPlayers[this.currentTrack] || this.trackPlayers.cyberpunk;
+    playTrack(tension);
   }
 
     // --- AS FAIXAS DA PLAYLIST (VERSÃO TURBO) ---

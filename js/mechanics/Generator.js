@@ -1,3 +1,4 @@
+// Algoritmos de geracao procedural do labirinto e random com seed.
 export function createSeededRandom(seed = Date.now()) {
   let value = (seed >>> 0) || 1;
   return () => {

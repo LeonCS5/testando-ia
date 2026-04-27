@@ -1,3 +1,4 @@
+// Coordena ciclo de jogo, gerenciamento de estado e resize do canvas.
 import MenuState from '../states/MenuState.js';
 
 export default class Game {

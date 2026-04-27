@@ -1,3 +1,4 @@
+// Sistema de efeitos visuais: particulas, tremor de tela e glitch temporario.
 import Particle from '../entities/Particle.js';
 
 export default class Juice {

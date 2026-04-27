@@ -1,3 +1,4 @@
+// Captura teclado e expoe estado de input por frame para os estados do jogo.
 export default class Input {
   constructor() {
     this.left = false;

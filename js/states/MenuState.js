@@ -1,6 +1,8 @@
+// Estado de menu principal: selecao de modo e transicao para setup/jogo.
 import PlayState from './PlayState.js';
 import OnlineSetupState from './OnlineSetupState.js';
 import { GAME_MODES, cloneMode } from '../config/gameModes.js';
+import { updateDirectionalSelection } from './shared/navigation.js';
 
 export default class MenuState {
   constructor(game) {
@@ -15,16 +17,15 @@ export default class MenuState {
   }
 
   update(dt, input) {
-    this.cooldown = Math.max(0, this.cooldown - dt);
-    if (this.cooldown <= 0) {
-      if (input.left || input.up) {
-        this.selectedIndex = (this.selectedIndex - 1 + this.options.length) % this.options.length;
-        this.cooldown = 0.16;
-      } else if (input.right || input.down) {
-        this.selectedIndex = (this.selectedIndex + 1) % this.options.length;
-        this.cooldown = 0.16;
-      }
-    }
+    const nav = updateDirectionalSelection({
+      dt,
+      input,
+      cooldown: this.cooldown,
+      index: this.selectedIndex,
+      length: this.options.length,
+    });
+    this.cooldown = nav.cooldown;
+    this.selectedIndex = nav.index;
 
     if (input.enter) {
       const selected = cloneMode(this.options[this.selectedIndex]);

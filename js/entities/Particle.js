@@ -1,3 +1,4 @@
+// Particula visual usada em rastros e efeitos de juice durante a gameplay.
 export default class Particle {
   constructor(x, y, vx, vy, life, color) {
     this.x = x;

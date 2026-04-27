@@ -1,11 +1,24 @@
+// Estado de setup online: define nome/cor do player antes de iniciar partida.
 import MenuState from './MenuState.js';
 import PlayState from './PlayState.js';
-import { ONLINE_DEFAULT_MODE, cloneMode } from '../config/gameModes.js';
+import { ONLINE_DEFAULT_MODE, normalizeMode } from '../config/gameModes.js';
+import { applyTextInput, updateDirectionalSelection } from './shared/navigation.js';
 
 export default class OnlineSetupState {
   constructor(game, modeConfig = {}) {
     this.game = game;
-    const resolvedMode = this.resolveModeConfig(modeConfig || game.pendingModeConfig || {});
+    const resolvedMode = normalizeMode(
+      modeConfig || game.pendingModeConfig || {},
+      ONLINE_DEFAULT_MODE || {
+        modeId: 'challenge-bots',
+        label: 'Desafiar Bots',
+        width: 31,
+        height: 31,
+        time: 48,
+        online: true,
+        liveMaze: false,
+      },
+    );
     this.modeConfig = {
       ...resolvedMode,
       online: true,
@@ -21,50 +34,30 @@ export default class OnlineSetupState {
     this.cooldown = 0;
   }
 
-  resolveModeConfig(modeConfig) {
-    const baseMode = cloneMode(ONLINE_DEFAULT_MODE || {
-      modeId: 'challenge-bots',
-      label: 'Desafiar Bots',
-      width: 31,
-      height: 31,
-      time: 48,
-      online: true,
-      liveMaze: false,
-    });
-    const merged = { ...baseMode, ...modeConfig };
-    const isLiveFromLabel = merged.label === 'Labirinto Vivo';
-    const isLiveFromModeId = merged.modeId === 'live-maze';
-
-    return {
-      ...merged,
-      online: true,
-      liveMaze: Boolean(merged.liveMaze || isLiveFromLabel || isLiveFromModeId),
-    };
-  }
-
   onEnter() {
     this.cooldown = 0;
   }
 
   update(dt, input) {
-    this.cooldown = Math.max(0, this.cooldown - dt);
-    if (this.cooldown <= 0) {
-      if (input.left || input.up) {
-        this.selectedColorIndex = (this.selectedColorIndex - 1 + this.colors.length) % this.colors.length;
-        this.cooldown = 0.16;
-      } else if (input.right || input.down) {
-        this.selectedColorIndex = (this.selectedColorIndex + 1) % this.colors.length;
-        this.cooldown = 0.16;
-      }
+    const nav = updateDirectionalSelection({
+      dt,
+      input,
+      cooldown: this.cooldown,
+      index: this.selectedColorIndex,
+      length: this.colors.length,
+    });
 
-      if (input.backspace) {
-        this.onlineName = this.onlineName.slice(0, -1);
-        this.cooldown = 0.08;
-      }
-      if (input.text && this.onlineName.length < 12) {
-        this.onlineName += input.text.toUpperCase();
-        this.cooldown = 0.08;
-      }
+    this.cooldown = nav.cooldown;
+    this.selectedColorIndex = nav.index;
+
+    if (this.cooldown <= 0) {
+      const textUpdate = applyTextInput({
+        input,
+        value: this.onlineName,
+        cooldown: this.cooldown,
+      });
+      this.onlineName = textUpdate.value;
+      this.cooldown = textUpdate.cooldown;
     }
 
     if (input.enter) {

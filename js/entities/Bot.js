@@ -1,3 +1,4 @@
+// Classe base dos bots: pathfinding, movimento e comportamento de perseguicao.
 import { normalizeVector } from '../utils/MathUtils.js';
 
 class MinHeap {
@@ -66,6 +67,7 @@ export default class Bot {
     this.type = options.type || 'balanced';
     this.smartLevel = options.smartLevel || 2; // 1=low, 2=medium, 3=high
     this.behavior = options.behavior || this.type || 'racer';
+    this.movementStyle = options.movementStyle || 'flux';
     this.path = [];
     this.pathIndex = 0;
     this.lastGoal = null;
@@ -261,7 +263,7 @@ export default class Bot {
     return false;
   }
 
-  moveTowardsCell(dt, maze, targetCell, separationOffset = { x: 0, y: 0 }) {
+  moveTowardsCell(dt, maze, targetCell, separationOffset = { x: 0, y: 0 }, isGoal = false) {
     // Low-level hesitation
     if (this.hesitationTimer > 0) {
       this.hesitationTimer -= 1;
@@ -274,7 +276,8 @@ export default class Bot {
     const maxStep = this.speed * Math.min(dt, 1 / 30);
     const dx = adjustedTargetX - this.x;
     const dy = adjustedTargetY - this.y;
-    const snapRadius = Math.max(0.45, maxStep * 0.9);
+    // Larger snap radius for goal - make it easier to "reach"
+    const snapRadius = isGoal ? Math.max(1.5, maxStep * 1.2) : Math.max(0.45, maxStep * 0.9);
 
     if (Math.hypot(targetX - this.x, targetY - this.y) <= snapRadius) {
       this.x = targetX;
@@ -393,6 +396,11 @@ export default class Bot {
     if (this.path.length === 0 || this.pathIndex + 1 >= this.path.length) return null;
     let nextCell = this.path[this.pathIndex + 1];
 
+    // Flux style: always follow planned path for smoother, consistent movement.
+    if (this.movementStyle === 'flux') {
+      return nextCell;
+    }
+
     // Level 1: Sometimes pick random adjacent cell (looks confused)
     if (this.smartLevel === 1) {
       const confusionChance = 0.08;
@@ -504,8 +512,16 @@ export default class Bot {
   }
 
   smartMove(dt, maze, exitWorld, others = []) {
-    const current = maze.worldToCell(this.x, this.y);
-    const goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
+    let current = maze.worldToCell(this.x, this.y);
+    if (maze.isWallCell(current[0], current[1])) {
+      current = maze.getClosestOpenCell(current[0], current[1]);
+    }
+
+    let goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
+    if (maze.isWallCell(goal[0], goal[1])) {
+      goal = maze.getClosestOpenCell(goal[0], goal[1]);
+    }
+
     const occupancy = this.buildOccupancyMap(others);
     const occupancyWeight = this.avoidOtherBots && this.behavior === 'safe' ? 0.7 : 0;
 
@@ -524,15 +540,19 @@ export default class Bot {
     const nextCell = this.selectNextCell(current, maze);
     const targetCell = nextCell || this.greedyFallbackCell(current, goal, maze, occupancy) || goal;
     
-    // Combine corridor center offset with separation offset
-    const corridorOffset = this.getCorridorCenterOffset(targetCell, maze);
-    const separationOffset = this.getSeparationOffset(others, maze);
-    const combinedOffset = {
-      x: corridorOffset.x + separationOffset.x,
-      y: corridorOffset.y + separationOffset.y
-    };
+    // No offsets when targeting the goal - go straight for it
+    let combinedOffset = { x: 0, y: 0 };
+    if (targetCell[0] !== goal[0] || targetCell[1] !== goal[1]) {
+      // Combine corridor center offset with separation offset only for intermediate cells
+      const corridorOffset = this.getCorridorCenterOffset(targetCell, maze);
+      const separationOffset = this.getSeparationOffset(others, maze);
+      combinedOffset = {
+        x: corridorOffset.x + separationOffset.x,
+        y: corridorOffset.y + separationOffset.y
+      };
+    }
 
-    const reached = this.moveTowardsCell(dt, maze, targetCell, combinedOffset);
+    const reached = this.moveTowardsCell(dt, maze, targetCell, combinedOffset, targetCell[0] === goal[0] && targetCell[1] === goal[1]);
     if (reached && nextCell && targetCell[0] === nextCell[0] && targetCell[1] === nextCell[1]) {
       this.pathIndex = Math.min(this.pathIndex + 1, Math.max(0, this.path.length - 1));
     }
@@ -547,16 +567,7 @@ export default class Bot {
     this.updateSize();
     
     if (!exitWorld) return;
-
-    // Speed factors based on smartLevel
-    // Level 1 (Low): More erratic, delayed reactions
-    // Level 2 (Medium): Slightly slower reaction + movement
-    // Level 3 (High): Full speed
-    const speedFactor = this.smartLevel >= 3 ? 1.0 : this.smartLevel === 2 ? 0.92 : 0.85;
-    const baseSpeed = this.speed;
-    this.speed = baseSpeed * speedFactor;
     this.smartMove(dt, maze, exitWorld, others);
-    this.speed = baseSpeed;
   }
 
   draw(ctx) {

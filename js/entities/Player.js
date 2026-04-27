@@ -1,3 +1,4 @@
+// Entidade controlada pelo jogador: movimento, colisao e renderizacao do avatar.
 import { TILE_SIZE } from '../constants.js';
 import Maze from './Maze.js';
 

@@ -1,3 +1,4 @@
+// Bot Flux: variante de IA com comportamento alternativo para disputa online.
 import Bot from './Bot.js';
 
 /**
@@ -12,7 +13,7 @@ export default class FluxBot extends Bot {
       speed: 165,
       type: 'safe',
       behavior: 'safe',
-      smartLevel: 3,
+      smartLevel: 3, // Slow but very strategic
       ...options,
     });
   }

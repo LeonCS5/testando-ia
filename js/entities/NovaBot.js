@@ -1,3 +1,4 @@
+// Bot Nova: variante de IA com parametros proprios de navegacao.
 import Bot from './Bot.js';
 
 /**
