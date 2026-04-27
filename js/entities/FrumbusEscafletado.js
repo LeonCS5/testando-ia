@@ -44,10 +44,10 @@ export default class FrumbusEscafletado {
           if (dist < (this.size + (entity.size || 10))) {
             // Coletado!
             this.state = 'ACTIVE';
-            this.timer = 10; // 10 segundos de efeito
+            this.timer = 5; // 5 segundos de efeito
             this.owner = entity;
             if (typeof entity.activateGhost === 'function') {
-              entity.activateGhost(10);
+              entity.activateGhost(5);
             }
             break;
           }

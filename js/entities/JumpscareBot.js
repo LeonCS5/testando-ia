@@ -8,20 +8,23 @@ export default class JumpscareBot extends Bot {
       speed: 55, // Lento
       type: 'jumpscare',
       smartLevel: 0,
-      avoidOtherBots: false,
       ...options,
     });
-    
-    this.dirX = 0;
-    this.dirY = 0;
     this.jumpscareCooldown = 0;
-    this.pickRandomDirection();
   }
-
-  pickRandomDirection() {
-    const angle = Math.random() * Math.PI * 2;
-    this.dirX = Math.cos(angle);
-    this.dirY = Math.sin(angle);
+  findNearestPrey(others) {
+    if (!others || others.length === 0) return null;
+    let nearest = null;
+    let closestDist = Infinity;
+    for (const other of others) {
+      if (!other || other === this || other.ghostTimer > 0) continue;
+      const dist = Math.hypot(other.x - this.x, other.y - this.y);
+      if (dist < closestDist) {
+        closestDist = dist;
+        nearest = other;
+      }
+    }
+    return nearest;
   }
 
   update(dt, maze, exitWorld, others = [], state = null) {
@@ -33,13 +36,13 @@ export default class JumpscareBot extends Bot {
       return; // Fica parado um pouco depois de dar o susto
     }
 
-    const stepX = this.dirX * this.speed * dt;
-    const stepY = this.dirY * this.speed * dt;
-
-    // Se bateu na parede, gira pra uma direção aleatória
-    const moved = this.tryMove(stepX, stepY, maze);
-    if (!moved) {
-      this.pickRandomDirection();
+    // Caça a presa mais próxima (Player ou outros bots)
+    if (state) {
+      const allTargets = [state.player, ...others];
+      const prey = this.findNearestPrey(allTargets);
+      if (prey) {
+        this.smartMove(dt, maze, [prey.x, prey.y], allTargets);
+      }
     }
 
     // Checa colisão com o jogador ou outros bots para dar o jumpscare
@@ -68,8 +71,6 @@ export default class JumpscareBot extends Bot {
             target.cursedTimer = 3;
             this.jumpscareCooldown = 0.5; // Cooldown baixo pros bots tbm
           }
-          
-          this.pickRandomDirection(); // Muda o rumo
           break;
         }
       }
@@ -77,20 +78,28 @@ export default class JumpscareBot extends Bot {
   }
 
   draw(ctx) {
-    const pulse = 0.8 + Math.sin(Date.now() / 150) * 0.2;
-    ctx.globalAlpha = pulse;
+    // Efeito visual similar à onda escura do Live Maze, mas pulsando e maior (igual ao objetivo evasion)
+    const pulse = (Math.sin(Date.now() * 0.008 + (this.x + this.y) * 0.1) + 1) / 2;
+    const hue = 270 + pulse * 30; // Roxo a magenta
+    const intensity = (0.4 + (pulse * 0.35));
     
-    // Corpo
-    ctx.fillStyle = this.color;
+    ctx.fillStyle = `hsla(${hue}, 100%, ${30 + pulse * 20}%, ${intensity})`;
+    
+    // O tamanho visual imita a pulsação do EvasionBot
+    const visualPulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+    const radius = (this.size * 0.5) * (0.9 + visualPulse * 0.25) * 1.35; // Bem grande e assustador
+    
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size * 1.2, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // "Aura" / Sombra do jumpscare
-    ctx.shadowColor = '#ff0000';
-    ctx.shadowBlur = 10 * pulse;
+    // Borda pulsante similar à parede
+    ctx.strokeStyle = `rgba(${200 + pulse * 55}, 100, 255, ${pulse * 0.7})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
 
-    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1.0;
   }
 }

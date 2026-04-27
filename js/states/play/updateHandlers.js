@@ -116,10 +116,10 @@ export function updatePlayState(state, dt, input) {
   updateBeat(state, dt);
   updateLiveMaze(state, dt);
 
-  if (state.frumbus) {
+  if (state.frumbusList && state.frumbusList.length > 0) {
     const entities = [state.player, ...state.bots];
     if (state.evasionObjective) entities.push(state.evasionObjective);
-    state.frumbus.update(dt, entities);
+    state.frumbusList.forEach(f => f.update(dt, entities));
   }
 
   if (state.jumpscareBot) {

@@ -74,8 +74,8 @@ export function drawPlayState(state, ctx, timestamp) {
     drawExit(state, ctx, timestamp);
   }
 
-  if (state.frumbus) {
-    state.frumbus.draw(ctx);
+  if (state.frumbusList && state.frumbusList.length > 0) {
+    state.frumbusList.forEach(f => f.draw(ctx));
   }
 
   if (state.jumpscareBot) {

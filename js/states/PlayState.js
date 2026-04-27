@@ -28,7 +28,7 @@ export default class PlayState {
     this.exit = null;
     this.exitWorld = null;
     this.evasionObjective = null; // Para modo labirinto vivo
-    this.frumbus = null; // Item mágico
+    this.frumbusList = []; // Item mágico x2
     this.jumpscareBot = null; // Bot de jumpscare
 
     this.juice = new Juice();
@@ -94,7 +94,11 @@ export default class PlayState {
         maze: this.maze,
         random: () => this.random(),
       });
-      this.frumbus = new FrumbusEscafletado(this.maze, () => this.random());
+      this.frumbusList = [
+        new FrumbusEscafletado(this.maze, () => this.random()),
+        new FrumbusEscafletado(this.maze, () => this.random())
+      ];
+      this.frumbusList.forEach(f => f.spawn());
     } else {
       this.exitWorld = this.maze.getCellCenter(exitCellX, exitCellY);
     }
