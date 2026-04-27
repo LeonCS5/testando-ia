@@ -116,6 +116,12 @@ export function updatePlayState(state, dt, input) {
   updateBeat(state, dt);
   updateLiveMaze(state, dt);
 
+  if (state.frumbus) {
+    const entities = [state.player, ...state.bots];
+    if (state.evasionObjective) entities.push(state.evasionObjective);
+    state.frumbus.update(dt, entities);
+  }
+
   state.player.update(dt, input, state.maze, state.juice, state.game.audio);
   applyLiveMazePush(state, state.player, dt, true);
   updateBots(state, dt);

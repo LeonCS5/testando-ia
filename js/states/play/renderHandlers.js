@@ -74,6 +74,10 @@ export function drawPlayState(state, ctx, timestamp) {
     drawExit(state, ctx, timestamp);
   }
 
+  if (state.frumbus) {
+    state.frumbus.draw(ctx);
+  }
+
   state.player.draw(ctx);
   if (state.online) {
     state.bots.forEach((bot) => bot.draw(ctx));

@@ -12,6 +12,7 @@ import { addRankingPoint } from './play/rankingStore.js';
 import { normalizeMode } from '../config/gameModes.js';
 import { updatePlayState } from './play/updateHandlers.js';
 import { drawPlayState } from './play/renderHandlers.js';
+import FrumbusEscafletado from '../entities/FrumbusEscafletado.js';
 
 export default class PlayState {
   constructor(game, config) {
@@ -26,6 +27,8 @@ export default class PlayState {
     this.exit = null;
     this.exitWorld = null;
     this.evasionObjective = null; // Para modo labirinto vivo
+    this.frumbus = null; // Item mágico
+
     this.juice = new Juice();
     this.timer = this.config.time;
     this.levelComplete = false;
@@ -82,13 +85,14 @@ export default class PlayState {
     const [exitCellX, exitCellY] = this.findCentralOpenCell();
     this.exit = [exitCellX, exitCellY];
     
-    // Em modo labirinto vivo, objetivo é um bot que foge
+    // Em modo labirinto vivo, objetivo é um bot que foge e tem item mágico
     if (this.isLiveMaze) {
       const [exitX, exitY] = this.maze.getCellCenter(exitCellX, exitCellY);
       this.evasionObjective = new EvasionBot(exitX, exitY, {
         maze: this.maze,
         random: () => this.random(),
       });
+      this.frumbus = new FrumbusEscafletado(this.maze, () => this.random());
     } else {
       this.exitWorld = this.maze.getCellCenter(exitCellX, exitCellY);
     }

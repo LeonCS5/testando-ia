@@ -15,7 +15,12 @@ export default class Bot {
     this.pathIndex = 0;
     this.maze = options.maze || null;
     this.avoidOtherBots = Boolean(options.avoidOtherBots);
+    this.ghostTimer = 0;
     this.updateSize();
+  }
+
+  activateGhost(time) {
+    this.ghostTimer = time;
   }
 
   updateSize() {
@@ -25,6 +30,8 @@ export default class Bot {
   }
 
   collides(x, y, maze) {
+    if (this.ghostTimer > 0) return false;
+
     const half = this.size / 2;
     const points = [
       [x - half, y - half], [x + half, y - half],
@@ -99,12 +106,27 @@ export default class Bot {
     let current = maze.worldToCell(this.x, this.y);
     let goal = maze.worldToCell(exitWorld[0], exitWorld[1]);
 
-    if (maze.isWallCell(current[0], current[1])) current = maze.getClosestOpenCell(current[0], current[1]);
-    if (maze.isWallCell(goal[0], goal[1])) goal = maze.getClosestOpenCell(goal[0], goal[1]);
+    if (maze.isWallCell(current[0], current[1]) && this.ghostTimer <= 0) current = maze.getClosestOpenCell(current[0], current[1]);
+    if (maze.isWallCell(goal[0], goal[1]) && this.ghostTimer <= 0) goal = maze.getClosestOpenCell(goal[0], goal[1]);
 
-    // Recalcula a rota periodicamente ou se perdeu o caminho
-    if (this.path.length === 0 || Math.random() < 0.05) {
-      this.path = maze.findPath(current, goal);
+    if (this.ghostTimer > 0) {
+      this.path = [goal];
+      this.pathIndex = 0;
+    } else if (this.path.length === 0 || Math.random() < 0.05) {
+      const blocks = new Set();
+      if (this.avoidOtherBots && others) {
+        for (const o of others) {
+          if (!o || o === this) continue;
+          const c = maze.worldToCell(o.x, o.y);
+          blocks.add(`${c[0]},${c[1]}`);
+        }
+      }
+
+      this.path = maze.findPath(current, goal, blocks);
+      // Fallback: se estiver cercado, ignora as ameaças (EXCETO se for evader, evader prefere ficar parado do que cometer suicídio)
+      if (this.path.length === 0 && blocks.size > 0 && this.type !== 'evader') {
+        this.path = maze.findPath(current, goal);
+      }
       this.pathIndex = 0;
     }
 
@@ -125,10 +147,26 @@ export default class Bot {
   update(dt, maze, exitWorld, others = []) {
     if (maze) this.maze = maze;
     this.updateSize();
+
+    if (this.ghostTimer > 0) {
+      this.ghostTimer -= dt;
+      if (this.ghostTimer <= 0 && this.maze && this.maze.isWallAtWorld(this.x, this.y)) {
+        const cell = this.maze.worldToCell(this.x, this.y);
+        const openCell = this.maze.getClosestOpenCell(cell[0], cell[1]);
+        const center = this.maze.getCellCenter(openCell[0], openCell[1]);
+        this.x = center[0];
+        this.y = center[1];
+      }
+    }
+
     if (exitWorld) this.smartMove(dt, maze, exitWorld, others);
   }
 
   draw(ctx) {
+    if (this.ghostTimer > 0) {
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2;
+    }
+
     ctx.fillStyle = this.color;
     ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
     ctx.strokeStyle = '#ffffff';
@@ -138,5 +176,6 @@ export default class Bot {
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(this.name, this.x, this.y - this.size - 8);
+    ctx.globalAlpha = 1.0;
   }
 }

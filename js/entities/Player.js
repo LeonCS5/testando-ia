@@ -13,8 +13,13 @@ export default class Player {
     this.name = options.name || 'PLAYER';
 
     this.wallHitCooldown = 0;
+    this.ghostTimer = 0;
     this.size = 10; // fallback
     this.updateSize();
+  }
+
+  activateGhost(time) {
+    this.ghostTimer = time;
   }
 
   updateSize() {
@@ -71,11 +76,30 @@ export default class Player {
 
     this.wallHitCooldown = Math.max(0, this.wallHitCooldown - dt);
 
+    const wasGhost = this.ghostTimer > 0;
+    if (this.ghostTimer > 0) {
+      this.ghostTimer -= dt;
+      if (this.ghostTimer <= 0) {
+        // O efeito acabou, tenta ejetar se estiver dentro de uma parede
+        if (this.maze && this.maze.isWallAtWorld(this.x, this.y)) {
+          const cell = this.maze.worldToCell(this.x, this.y);
+          const openCell = this.maze.getClosestOpenCell(cell[0], cell[1]);
+          const center = this.maze.getCellCenter(openCell[0], openCell[1]);
+          this.x = center[0];
+          this.y = center[1];
+          nextX = this.x;
+          nextY = this.y;
+        }
+      }
+    }
+
     this.x = nextX;
     this.y = nextY;
   }
 
   collides(x, y) {
+    if (this.ghostTimer > 0) return false;
+
     const maze = this.maze;
     if (!maze || !Number.isFinite(maze.tileSize)) return false;
 
@@ -96,6 +120,10 @@ export default class Player {
   draw(ctx) {
     if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.size)) return;
 
+    if (this.ghostTimer > 0) {
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2;
+    }
+
     const glow = ctx.createRadialGradient(
       this.x, this.y, this.size * 0.2,
       this.x, this.y, this.size
@@ -114,5 +142,7 @@ export default class Player {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.strokeRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+
+    ctx.globalAlpha = 1.0;
   }
 }
