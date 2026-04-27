@@ -5,7 +5,7 @@ export default class JumpscareBot extends Bot {
     super(x, y, {
       name: 'Demiurgo',
       color: '#1a0022', // Roxo muito escuro, quase preto
-      speed: 55, // Lento
+      speed: 120, // Lento
       type: 'jumpscare',
       smartLevel: 0,
       ...options,
