@@ -1,10 +1,6 @@
-// Bot objetivo do modo vivo: tenta escapar de perseguidores dentro do labirinto.
+// Bot objetivo do modo vivo: tenta escapar de perseguidores dentro do labirinto. (Refatorado - Simplicity First)
 import Bot from './Bot.js';
 
-/**
- * EvasionBot - Objective that runs away when threatened
- * Moves when approached, actively evading pursuers
- */
 export default class EvasionBot extends Bot {
   constructor(x, y, options = {}) {
     super(x, y, {
@@ -12,141 +8,63 @@ export default class EvasionBot extends Bot {
       color: '#ffff00',
       speed: 520,
       type: 'evader',
-      behavior: 'evader',
       smartLevel: 3,
       avoidOtherBots: false,
       ...options,
     });
     
-    this.detectionRange = options.detectionRange || 20; // Ativa fuga quando algo fica perto
+    this.detectionRange = options.detectionRange || 20;
     this.shouldEvade = false;
-    this.evasionCooldown = 0;
-    this.lastEvasionTarget = null;
-    this.decisionTimer = 0;
-    this.decisionInterval = options.decisionInterval || 0.12;
     this.currentSafeWorldTarget = null;
+    this.decisionTimer = 0;
   }
 
-  findNearestThreat(others, maze) {
-    if (!Array.isArray(others) || others.length === 0) return null;
-    
+  findNearestThreat(others) {
+    if (!others || others.length === 0) return null;
     let nearest = null;
     let closestDist = this.detectionRange;
     
     for (const other of others) {
       if (!other || other === this) continue;
-      const dx = other.x - this.x;
-      const dy = other.y - this.y;
-      const dist = Math.hypot(dx, dy);
+      const dist = Math.hypot(other.x - this.x, other.y - this.y);
       if (dist < closestDist) {
         closestDist = dist;
         nearest = other;
       }
     }
-    
     return nearest;
   }
 
-  countOpenNeighbors(cell, maze) {
-    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    let count = 0;
-    for (const [dx, dy] of dirs) {
-      const nx = cell[0] + dx;
-      const ny = cell[1] + dy;
-      if (!maze.isWallCell(nx, ny)) count += 1;
-    }
-    return count;
-  }
-
-  pickSafeCell(maze, others = []) {
-    if (!Array.isArray(maze.openCells) || maze.openCells.length === 0) {
-      return maze.worldToCell(this.x, this.y);
-    }
-
+  pickSafeCell(maze, threat) {
     const current = maze.worldToCell(this.x, this.y);
-    const nearestThreat = this.findNearestThreat(others, maze);
-    const nearestThreatCell = nearestThreat ? maze.worldToCell(nearestThreat.x, nearestThreat.y) : null;
-    const baseThreatDist = nearestThreatCell
-      ? Math.abs(current[0] - nearestThreatCell[0]) + Math.abs(current[1] - nearestThreatCell[1])
-      : 0;
+    if (!threat) return maze.randomOpenCell();
 
-    let fleeX = 0;
-    let fleeY = 0;
-    if (nearestThreatCell) {
-      const rawX = current[0] - nearestThreatCell[0];
-      const rawY = current[1] - nearestThreatCell[1];
-      const len = Math.hypot(rawX, rawY) || 1;
-      fleeX = rawX / len;
-      fleeY = rawY / len;
-    }
-
-    const sampleStep = Math.max(1, Math.floor(maze.openCells.length / 160));
-    let best = current;
-    let bestScore = -Infinity;
-
-    for (let i = 0; i < maze.openCells.length; i += sampleStep) {
-      const cell = maze.openCells[i];
-      const [cx, cy] = cell;
-      if (maze.isWallCell(cx, cy)) continue;
-
-      let nearestThreatDist = Infinity;
-      for (const other of others) {
-        if (!other || other === this) continue;
-        const threatCell = maze.worldToCell(other.x, other.y);
-        const dist = Math.abs(cx - threatCell[0]) + Math.abs(cy - threatCell[1]);
-        if (dist < nearestThreatDist) nearestThreatDist = dist;
-      }
-
-      if (!Number.isFinite(nearestThreatDist)) nearestThreatDist = 0;
-      const distFromSelf = Math.abs(cx - current[0]) + Math.abs(cy - current[1]);
-      const mobilityBonus = this.countOpenNeighbors(cell, maze) * 0.9;
-      const toCellX = cx - current[0];
-      const toCellY = cy - current[1];
-      const toCellLen = Math.hypot(toCellX, toCellY) || 1;
-      const awayAlignment = ((toCellX / toCellLen) * fleeX) + ((toCellY / toCellLen) * fleeY);
-      const directionBonus = awayAlignment * 4;
-      const approachPenalty = nearestThreatCell && nearestThreatDist < baseThreatDist
-        ? (baseThreatDist - nearestThreatDist) * 8
-        : 0;
-      const score = (nearestThreatDist * 3.2) + mobilityBonus + directionBonus - (distFromSelf * 0.28) - approachPenalty;
-
-      if (score > bestScore) {
-        bestScore = score;
-        best = cell;
-      }
-    }
-
-    return best;
-  }
-
-  pickImmediateEscapeCell(maze, threat) {
-    const current = maze.worldToCell(this.x, this.y);
+    // Tenta encontrar uma célula vazia adjacente que aumente a distância da ameaça
     const threatCell = maze.worldToCell(threat.x, threat.y);
+    const currentDist = Math.abs(current[0] - threatCell[0]) + Math.abs(current[1] - threatCell[1]);
+
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-    const rawX = current[0] - threatCell[0];
-    const rawY = current[1] - threatCell[1];
-    const len = Math.hypot(rawX, rawY) || 1;
-    const fleeX = rawX / len;
-    const fleeY = rawY / len;
-
     let best = current;
-    let bestScore = -Infinity;
+    let bestDist = currentDist;
 
     for (const [dx, dy] of dirs) {
       const nx = current[0] + dx;
       const ny = current[1] + dy;
       if (maze.isWallCell(nx, ny)) continue;
-
-      const distToThreat = Math.abs(nx - threatCell[0]) + Math.abs(ny - threatCell[1]);
-      const stepLen = Math.hypot(dx, dy) || 1;
-      const alignment = ((dx / stepLen) * fleeX) + ((dy / stepLen) * fleeY);
-      const score = distToThreat * 3 + alignment * 4 + this.countOpenNeighbors([nx, ny], maze) * 0.6;
-
-      if (score > bestScore) {
-        bestScore = score;
+      const dist = Math.abs(nx - threatCell[0]) + Math.abs(ny - threatCell[1]);
+      if (dist > bestDist) {
+        bestDist = dist;
         best = [nx, ny];
       }
+    }
+
+    // Se estiver sem saída imediata, escolhe um ponto aleatório longe da ameaça
+    if (best[0] === current[0] && best[1] === current[1] && maze.openCells.length > 0) {
+       for (let i = 0; i < 10; i++) {
+         const randomCell = maze.randomOpenCell();
+         const randomDist = Math.abs(randomCell[0] - threatCell[0]) + Math.abs(randomCell[1] - threatCell[1]);
+         if (randomDist > currentDist) return randomCell;
+       }
     }
 
     return best;
@@ -156,46 +74,18 @@ export default class EvasionBot extends Bot {
     if (maze) this.maze = maze;
     this.updateSize();
 
-    const threat = this.findNearestThreat(others, maze);
+    const threat = this.findNearestThreat(others);
+    this.shouldEvade = !!threat;
+    this.decisionTimer -= dt;
 
-    if (threat) {
-      this.shouldEvade = true;
-      this.lastEvasionTarget = threat;
-      this.evasionCooldown = 0.45;
-    } else if (this.evasionCooldown > 0) {
-      this.evasionCooldown = Math.max(0, this.evasionCooldown - dt);
-      this.shouldEvade = this.evasionCooldown > 0;
-    } else {
-      this.shouldEvade = false;
-    }
-
-    this.decisionTimer = Math.max(0, this.decisionTimer - dt);
     if (!this.currentSafeWorldTarget || this.decisionTimer <= 0 || this.shouldEvade) {
-      let safeCell;
-      if (threat) {
-        const threatDist = Math.hypot(threat.x - this.x, threat.y - this.y);
-        if (threatDist < this.detectionRange * 0.45) {
-          safeCell = this.pickImmediateEscapeCell(maze, threat);
-        }
-      }
-
-      if (!safeCell) {
-        safeCell = this.pickSafeCell(maze, others);
-      }
-
+      const safeCell = this.pickSafeCell(maze, threat);
       this.currentSafeWorldTarget = maze.getCellCenter(safeCell[0], safeCell[1]);
-      this.decisionTimer = this.decisionInterval;
+      this.decisionTimer = 0.5; // Toma nova decisão a cada meio segundo
     }
 
-    if (!this.currentSafeWorldTarget) return;
-    this.smartMove(dt, maze, this.currentSafeWorldTarget, others);
-
-    const currentCell = maze.worldToCell(this.x, this.y);
-    if (maze.isWallCell(currentCell[0], currentCell[1])) {
-      const [safeX, safeY] = maze.getClosestOpenCell(currentCell[0], currentCell[1]);
-      const [worldX, worldY] = maze.getCellCenter(safeX, safeY);
-      this.x = worldX;
-      this.y = worldY;
+    if (this.currentSafeWorldTarget) {
+      this.smartMove(dt, maze, this.currentSafeWorldTarget, others);
     }
   }
 
@@ -208,8 +98,7 @@ export default class EvasionBot extends Bot {
     ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    const outlineAlpha = this.shouldEvade ? pulse : 0.85;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${outlineAlpha})`;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${this.shouldEvade ? pulse : 0.85})`;
     ctx.lineWidth = this.shouldEvade ? 3 : 1.5;
     ctx.beginPath();
     ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
