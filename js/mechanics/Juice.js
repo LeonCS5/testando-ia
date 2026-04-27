@@ -79,34 +79,52 @@ export default class Juice {
   drawJumpscare(ctx, width, height) {
     if (this.jumpscareActiveTimer <= 0) return;
     
+    const progress = 1 - (this.jumpscareActiveTimer / 0.8); // Vai de 0 a 1
+    const alpha = this.jumpscareActiveTimer / 0.8;
+    
     // Fundo vermelho sangue e pulsante
-    const alpha = (this.jumpscareActiveTimer / 0.8);
     ctx.fillStyle = Math.random() > 0.5 ? `rgba(255, 0, 0, ${alpha * 0.9})` : `rgba(0, 0, 0, ${alpha * 0.9})`;
     ctx.fillRect(0, 0, width, height);
 
-    // Dentes/Estacas assustadoras nas bordas
-    ctx.fillStyle = '#000000';
-    for(let i = 0; i < 15; i++) {
-      ctx.beginPath();
-      const px = Math.random() * width;
-      ctx.moveTo(px, 0);
-      ctx.lineTo(px - 40 + Math.random() * 80, 50 + Math.random() * 200);
-      ctx.lineTo(px + 40 + Math.random() * 80, 0);
-      ctx.fill();
+    // O rosto gigante saltando (FNAF style)
+    const centerX = width / 2;
+    const centerY = height / 2;
+    // O raio cresce de 50 para mais de 2000 px, "saindo" da tela
+    const radius = 50 + Math.pow(progress, 3) * 2000; 
 
-      ctx.beginPath();
-      const bx = Math.random() * width;
-      ctx.moveTo(bx, height);
-      ctx.lineTo(bx - 40 + Math.random() * 80, height - 50 - Math.random() * 200);
-      ctx.lineTo(bx + 40 + Math.random() * 80, height);
-      ctx.fill();
+    // Cor base do rosto
+    const pulse = (Math.sin(Date.now() * 0.05) + 1) / 2;
+    const hue = 270 + pulse * 30; // Roxo a magenta
+    ctx.fillStyle = `hsla(${hue}, 100%, ${10 + pulse * 20}%, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vazio central (boca/olho aberto devorando o jogador)
+    ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dentes bizarros
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * Math.PI * 2 + (Math.random() * 0.1 - 0.05);
+        const innerRadius = radius * 0.45;
+        const outerRadius = radius * 0.8;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX + Math.cos(angle - 0.1) * outerRadius, centerY + Math.sin(angle - 0.1) * outerRadius);
+        ctx.lineTo(centerX + Math.cos(angle) * innerRadius, centerY + Math.sin(angle) * innerRadius);
+        ctx.lineTo(centerX + Math.cos(angle + 0.1) * outerRadius, centerY + Math.sin(angle + 0.1) * outerRadius);
+        ctx.fill();
     }
 
-    // Estática brutal no meio da tela
+    // Estática brutal
     for (let i = 0; i < 30; i += 1) {
       const y = Math.random() * height;
       const h = 5 + Math.random() * 50;
-      ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ff0000';
+      ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${alpha})` : `rgba(255,0,0,${alpha})`;
       ctx.fillRect(0, y, width, h);
     }
   }

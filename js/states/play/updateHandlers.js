@@ -122,8 +122,18 @@ export function updatePlayState(state, dt, input) {
     state.frumbusList.forEach(f => f.update(dt, entities));
   }
 
-  if (state.jumpscareBot) {
-    state.jumpscareBot.update(dt, state.maze, null, state.bots, state);
+  if (state.jumpscareBots && state.jumpscareBots.length > 0) {
+    const allBots = [...state.bots];
+    if (state.evasionObjective) allBots.push(state.evasionObjective);
+    
+    const newBots = [];
+    state.jumpscareBots.forEach(bot => {
+      bot.update(dt, state.maze, state.exitWorld, allBots, state, newBots);
+    });
+    
+    if (newBots.length > 0) {
+      state.jumpscareBots.push(...newBots);
+    }
   }
 
   state.player.update(dt, input, state.maze, state.juice, state.game.audio);

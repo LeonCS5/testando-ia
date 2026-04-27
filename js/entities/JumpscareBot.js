@@ -11,6 +11,8 @@ export default class JumpscareBot extends Bot {
       ...options,
     });
     this.jumpscareCooldown = 0;
+    this.catchCount = 0;
+    this.baseSpeed = this.speed;
   }
   findNearestPrey(others) {
     if (!others || others.length === 0) return null;
@@ -33,7 +35,6 @@ export default class JumpscareBot extends Bot {
 
     if (this.jumpscareCooldown > 0) {
       this.jumpscareCooldown -= dt;
-      return; // Fica parado um pouco depois de dar o susto
     }
 
     // Caça a presa mais próxima (Player ou outros bots)
@@ -46,7 +47,7 @@ export default class JumpscareBot extends Bot {
     }
 
     // Checa colisão com o jogador ou outros bots para dar o jumpscare
-    if (state) {
+    if (state && this.jumpscareCooldown <= 0) {
       const allTargets = [state.player, ...others];
       for (const target of allTargets) {
         if (!target || target === this || target.ghostTimer > 0) continue;
@@ -71,6 +72,21 @@ export default class JumpscareBot extends Bot {
             target.cursedTimer = 3;
             this.jumpscareCooldown = 0.5; // Cooldown baixo pros bots tbm
           }
+          
+          // Incrementa as capturas e velocidade
+          this.catchCount++;
+          this.speed += 15;
+          
+          if (this.catchCount >= 4) {
+            this.catchCount = 0;
+            // Spawn de um novo Demiurgo na mesma posição ou local aleatório
+            if (newBotsArray) {
+              const [cx, cy] = maze.randomOpenCell();
+              const [nx, ny] = maze.getCellCenter(cx, cy);
+              newBotsArray.push(new JumpscareBot(nx, ny, { maze: maze }));
+            }
+          }
+          
           break;
         }
       }
@@ -78,8 +94,14 @@ export default class JumpscareBot extends Bot {
   }
 
   draw(ctx) {
-    // Efeito visual similar à onda escura do Live Maze, mas pulsando e maior (igual ao objetivo evasion)
-    const pulse = (Math.sin(Date.now() * 0.008 + (this.x + this.y) * 0.1) + 1) / 2;
+    // Sincroniza exatamente com a célula do Live Maze em que ele está
+    let gridX = 0;
+    let gridY = 0;
+    if (this.maze) {
+      gridX = Math.floor((this.x - this.maze.originX) / this.maze.tileSize);
+      gridY = Math.floor((this.y - this.maze.originY) / this.maze.tileSize);
+    }
+    const pulse = (Math.sin(Date.now() * 0.008 + (gridX + gridY) * 0.1) + 1) / 2;
     const hue = 270 + pulse * 30; // Roxo a magenta
     const intensity = (0.4 + (pulse * 0.35));
     

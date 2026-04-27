@@ -78,8 +78,8 @@ export function drawPlayState(state, ctx, timestamp) {
     state.frumbusList.forEach(f => f.draw(ctx));
   }
 
-  if (state.jumpscareBot) {
-    state.jumpscareBot.draw(ctx);
+  if (state.jumpscareBots && state.jumpscareBots.length > 0) {
+    state.jumpscareBots.forEach(bot => bot.draw(ctx));
   }
 
   state.player.draw(ctx);
