@@ -69,7 +69,6 @@ export default class Player {
     }
 
     if (collision && this.wallHitCooldown <= 0) {
-      if (juice && typeof juice.localShake === 'function') juice.localShake(0.2, 0.8);
       if (audio && typeof audio.wallHit === 'function') audio.wallHit();
       this.wallHitCooldown = 0.18;
     }
@@ -122,6 +121,9 @@ export default class Player {
 
     if (this.ghostTimer > 0) {
       ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2;
+    } else if (this.wallHitCooldown > 0) {
+      // Efeito de piscar quando bate na parede
+      ctx.globalAlpha = (Math.floor(Date.now() / 50) % 2 === 0) ? 0.2 : 1.0;
     }
 
     const glow = ctx.createRadialGradient(

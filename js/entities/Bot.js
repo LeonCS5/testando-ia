@@ -16,6 +16,7 @@ export default class Bot {
     this.maze = options.maze || null;
     this.avoidOtherBots = Boolean(options.avoidOtherBots);
     this.ghostTimer = 0;
+    this.cursedTimer = 0;
     this.updateSize();
   }
 
@@ -148,6 +149,11 @@ export default class Bot {
     if (maze) this.maze = maze;
     this.updateSize();
 
+    if (this.cursedTimer > 0) {
+      this.cursedTimer -= dt;
+      return;
+    }
+
     if (this.ghostTimer > 0) {
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0 && this.maze && this.maze.isWallAtWorld(this.x, this.y)) {
@@ -163,7 +169,9 @@ export default class Bot {
   }
 
   draw(ctx) {
-    if (this.ghostTimer > 0) {
+    if (this.cursedTimer > 0) {
+      ctx.globalAlpha = 0.3; // Fica transparente/congelado
+    } else if (this.ghostTimer > 0) {
       ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2;
     }
 

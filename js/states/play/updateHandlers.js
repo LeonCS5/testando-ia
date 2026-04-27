@@ -122,6 +122,10 @@ export function updatePlayState(state, dt, input) {
     state.frumbus.update(dt, entities);
   }
 
+  if (state.jumpscareBot) {
+    state.jumpscareBot.update(dt, state.maze, null, state.bots, state);
+  }
+
   state.player.update(dt, input, state.maze, state.juice, state.game.audio);
   applyLiveMazePush(state, state.player, dt, true);
   updateBots(state, dt);

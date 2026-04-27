@@ -13,6 +13,7 @@ import { normalizeMode } from '../config/gameModes.js';
 import { updatePlayState } from './play/updateHandlers.js';
 import { drawPlayState } from './play/renderHandlers.js';
 import FrumbusEscafletado from '../entities/FrumbusEscafletado.js';
+import JumpscareBot from '../entities/JumpscareBot.js';
 
 export default class PlayState {
   constructor(game, config) {
@@ -28,6 +29,7 @@ export default class PlayState {
     this.exitWorld = null;
     this.evasionObjective = null; // Para modo labirinto vivo
     this.frumbus = null; // Item mágico
+    this.jumpscareBot = null; // Bot de jumpscare
 
     this.juice = new Juice();
     this.timer = this.config.time;
@@ -99,6 +101,12 @@ export default class PlayState {
 
     const corner = SPAWN_CORNERS[Math.floor(this.random() * SPAWN_CORNERS.length)];
     const [cornerX, cornerY] = resolveCornerCell(this.maze, corner);
+    
+    // Spawn do JumpscareBot (1 por mapa, para não ser irritante demais)
+    const [scareXCell, scareYCell] = this.maze.randomOpenCell();
+    const [scareX, scareY] = this.maze.getCellCenter(scareXCell, scareYCell);
+    this.jumpscareBot = new JumpscareBot(scareX, scareY, { maze: this.maze });
+
     const [startCellX, startCellY] = this.maze.getClosestOpenCell(cornerX, cornerY, new Set([`${exitCellX},${exitCellY}`]));
     const [startX, startY] = this.maze.getCellCenter(startCellX, startCellY);
 

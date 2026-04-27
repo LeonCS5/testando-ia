@@ -78,6 +78,10 @@ export function drawPlayState(state, ctx, timestamp) {
     state.frumbus.draw(ctx);
   }
 
+  if (state.jumpscareBot) {
+    state.jumpscareBot.draw(ctx);
+  }
+
   state.player.draw(ctx);
   if (state.online) {
     state.bots.forEach((bot) => bot.draw(ctx));
