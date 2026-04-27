@@ -124,7 +124,7 @@ export function updatePlayState(state, dt, input) {
 
   if (state.jumpscareBots && state.jumpscareBots.length > 0) {
     const allBots = [...state.bots];
-    if (state.evasionObjective) allBots.push(state.evasionObjective);
+    // Demiurgo e EvasionBot são do mesmo time, então o Demiurgo ignora ele!
     
     const newBots = [];
     state.jumpscareBots.forEach(bot => {
@@ -137,7 +137,7 @@ export function updatePlayState(state, dt, input) {
   }
 
   state.player.update(dt, input, state.maze, state.juice, state.game.audio);
-  applyLiveMazePush(state, state.player, dt, true);
+  applyLiveMazePush(state, state.player, dt, false); // false tira a tremedeira da parede!
   updateBots(state, dt);
   checkWinner(state);
 }
