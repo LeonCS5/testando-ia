@@ -1,12 +1,14 @@
 // Entidade de labirinto estatico: gera grade, layout na tela e consultas de colisao.
 import { TILE_SIZE } from '../constants.js';
 import { createSeededRandom, generateMaze } from '../mechanics/Generator.js';
+import { MAZE_TUNING } from '../config/gameModes.js';
 
 export default class Maze {
   constructor(width, height, options = {}) {
     this.tileSize = TILE_SIZE;
     this.width = width;
     this.height = height;
+    this.openingFactor = Number.isFinite(options.openingFactor) ? options.openingFactor : 1;
     this.seed = Number.isFinite(options.seed) ? options.seed : Math.floor(Date.now() % 2147483647);
     this.rng = createSeededRandom(this.seed);
     this.originX = 0;
@@ -20,7 +22,9 @@ export default class Maze {
     if (Number.isFinite(seed)) {
       this.seed = seed;
     }
-    const result = generateMaze(this.width, this.height, this.seed);
+    const result = generateMaze(this.width, this.height, this.seed, {
+      openingFactor: this.openingFactor,
+    });
     this.grid = result.grid;
     this.openCells = result.openCells;
     this.rng = createSeededRandom(this.seed + 1337);
@@ -108,5 +112,107 @@ setLayout(screenWidth, screenHeight) {
       }
       return best;
     }, null).cell;
+  }
+
+  updateOpenCellsList() {
+    this.openCells = [];
+    for (let y = 0; y < this.height; y += 1) {
+      for (let x = 0; x < this.width; x += 1) {
+        if (this.grid[y][x] === 0) this.openCells.push([x, y]);
+      }
+    }
+  }
+
+  findPath(start, goal, blockedKey = null) {
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const queue = [start];
+    const startKey = `${start[0]},${start[1]}`;
+    const goalKey = `${goal[0]},${goal[1]}`;
+    const visited = new Set([startKey]);
+    const cameFrom = new Map();
+
+    while (queue.length > 0) {
+      const [cx, cy] = queue.shift();
+      const currentKey = `${cx},${cy}`;
+      if (currentKey === goalKey) {
+        const path = [];
+        let walk = goalKey;
+        while (walk) {
+          const [px, py] = walk.split(',').map(Number);
+          path.unshift([px, py]);
+          walk = cameFrom.get(walk);
+        }
+        return path;
+      }
+
+      for (const [dx, dy] of dirs) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        const key = `${nx},${ny}`;
+        if (key === blockedKey && key !== goalKey && key !== startKey) continue;
+        if (this.isWallCell(nx, ny) || visited.has(key)) continue;
+        visited.add(key);
+        cameFrom.set(key, currentKey);
+        queue.push([nx, ny]);
+      }
+    }
+
+    return [];
+  }
+
+  hasAlternativeLongerPath(start, goal, shortestLength) {
+    const shortest = this.findPath(start, goal);
+    if (shortest.length === 0) return false;
+
+    for (let i = MAZE_TUNING.dualRoutePathProbeStride; i < shortest.length - MAZE_TUNING.dualRoutePathProbeStride; i += MAZE_TUNING.dualRoutePathProbeStride) {
+      const blocked = `${shortest[i][0]},${shortest[i][1]}`;
+      const alternative = this.findPath(start, goal, blocked);
+      if (alternative.length >= shortestLength + MAZE_TUNING.dualRouteMinExtraSteps) return true;
+    }
+
+    return false;
+  }
+
+  carveRandomWallBetweenOpenCells() {
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const candidates = [];
+
+    for (let y = 1; y < this.height - 1; y += 1) {
+      for (let x = 1; x < this.width - 1; x += 1) {
+        if (this.grid[y][x] !== 1) continue;
+        let openNeighbors = 0;
+        for (const [dx, dy] of dirs) {
+          if (!this.isWallCell(x + dx, y + dy)) openNeighbors += 1;
+        }
+        if (openNeighbors >= 2) candidates.push([x, y]);
+      }
+    }
+
+    if (candidates.length === 0) return false;
+    const [cx, cy] = candidates[Math.floor(this.nextRandom() * candidates.length)];
+    this.grid[cy][cx] = 0;
+    return true;
+  }
+
+  ensureDualRoutes(start, goal) {
+    if (!Array.isArray(start) || !Array.isArray(goal)) return;
+    if (this.isWallCell(start[0], start[1]) || this.isWallCell(goal[0], goal[1])) return;
+
+    const shortest = this.findPath(start, goal);
+    if (shortest.length === 0) return;
+
+    const shortestLength = shortest.length;
+    if (this.hasAlternativeLongerPath(start, goal, shortestLength)) return;
+
+    for (let attempt = 0; attempt < MAZE_TUNING.dualRouteMaxCarveAttempts; attempt += 1) {
+      const carved = this.carveRandomWallBetweenOpenCells();
+      if (!carved) break;
+      if (this.hasAlternativeLongerPath(start, goal, shortestLength)) {
+        this.updateOpenCellsList();
+        return;
+      }
+    }
+
+    this.updateOpenCellsList();
   }
 }

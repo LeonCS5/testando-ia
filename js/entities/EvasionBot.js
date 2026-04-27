@@ -10,7 +10,7 @@ export default class EvasionBot extends Bot {
     super(x, y, {
       name: 'Objective',
       color: '#ffff00',
-      speed: 200,
+      speed: 520,
       type: 'evader',
       behavior: 'evader',
       smartLevel: 3,
@@ -18,7 +18,7 @@ export default class EvasionBot extends Bot {
       ...options,
     });
     
-    this.detectionRange = options.detectionRange || 220; // Ativa fuga quando algo fica perto
+    this.detectionRange = options.detectionRange || 20; // Ativa fuga quando algo fica perto
     this.shouldEvade = false;
     this.evasionCooldown = 0;
     this.lastEvasionTarget = null;

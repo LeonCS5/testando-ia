@@ -7,18 +7,7 @@ import { applyTextInput, updateDirectionalSelection } from './shared/navigation.
 export default class OnlineSetupState {
   constructor(game, modeConfig = {}) {
     this.game = game;
-    const resolvedMode = normalizeMode(
-      modeConfig || game.pendingModeConfig || {},
-      ONLINE_DEFAULT_MODE || {
-        modeId: 'challenge-bots',
-        label: 'Desafiar Bots',
-        width: 31,
-        height: 31,
-        time: 48,
-        online: true,
-        liveMaze: false,
-      },
-    );
+    const resolvedMode = normalizeMode(modeConfig || game.pendingModeConfig || {}, ONLINE_DEFAULT_MODE);
     this.modeConfig = {
       ...resolvedMode,
       online: true,

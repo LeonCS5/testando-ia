@@ -1,4 +1,6 @@
 // Algoritmos de geracao procedural do labirinto e random com seed.
+import { MAZE_TUNING } from '../config/gameModes.js';
+
 export function createSeededRandom(seed = Date.now()) {
   let value = (seed >>> 0) || 1;
   return () => {
@@ -9,8 +11,11 @@ export function createSeededRandom(seed = Date.now()) {
   };
 }
 
-export function generateMaze(width, height, seed = Date.now()) {
+export function generateMaze(width, height, seed = Date.now(), options = {}) {
   const random = createSeededRandom(seed);
+  const openingFactor = Number.isFinite(options.openingFactor)
+    ? Math.max(MAZE_TUNING.minOpeningFactor, options.openingFactor)
+    : 1;
   const grid = Array.from({ length: height }, () => Array(width).fill(1));
   const inBounds = (x, y) => x > 0 && x < width - 1 && y > 0 && y < height - 1;
   const directions = [
@@ -46,7 +51,11 @@ export function generateMaze(width, height, seed = Date.now()) {
     stack.push([nx, ny]);
   }
 
-  for (let i = 0; i < 35; i += 1) {
+  const firstPassOpenings = Math.max(
+    MAZE_TUNING.minFirstPassOpenings,
+    Math.round(MAZE_TUNING.baseFirstPassOpenings * openingFactor),
+  );
+  for (let i = 0; i < firstPassOpenings; i += 1) {
     const rx = 1 + 2 * Math.floor(random() * ((width - 1) / 2));
     const ry = 1 + 2 * Math.floor(random() * ((height - 1) / 2));
     grid[ry][rx] = 0;
@@ -56,20 +65,24 @@ export function generateMaze(width, height, seed = Date.now()) {
     if (inBounds(wx, wy)) grid[wy][wx] = 0;
   }
 
-    // Adicionar mais caminhos adicionais para mais rotas até o centro
-    for (let i = 0; i < 60; i += 1) {
-      const rx = 1 + 2 * Math.floor(random() * ((width - 1) / 2));
-      const ry = 1 + 2 * Math.floor(random() * ((height - 1) / 2));
-      const randomDirs = [...directions].sort(() => random() - 0.5);
-      for (const [dx, dy] of randomDirs) {
-        const wx = rx + dx;
-        const wy = ry + dy;
-        if (inBounds(wx, wy)) {
-          grid[wy][wx] = 0;
-          break;
-        }
+  // Adicionar mais caminhos adicionais para ajustar a complexidade sem alterar tamanho do mapa.
+  const secondPassOpenings = Math.max(
+    MAZE_TUNING.minSecondPassOpenings,
+    Math.round(MAZE_TUNING.baseSecondPassOpenings * openingFactor),
+  );
+  for (let i = 0; i < secondPassOpenings; i += 1) {
+    const rx = 1 + 2 * Math.floor(random() * ((width - 1) / 2));
+    const ry = 1 + 2 * Math.floor(random() * ((height - 1) / 2));
+    const randomDirs = [...directions].sort(() => random() - 0.5);
+    for (const [dx, dy] of randomDirs) {
+      const wx = rx + dx;
+      const wy = ry + dy;
+      if (inBounds(wx, wy)) {
+        grid[wy][wx] = 0;
+        break;
       }
     }
+  }
 
   const openCells = [];
   for (let y = 1; y < height; y += 2) {
