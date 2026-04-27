@@ -123,13 +123,16 @@ setLayout(screenWidth, screenHeight) {
     }
   }
 
-  findPath(start, goal, blockedKey = null) {
+  findPath(start, goal, blockedKeys = null) {
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const queue = [start];
     const startKey = `${start[0]},${start[1]}`;
     const goalKey = `${goal[0]},${goal[1]}`;
     const visited = new Set([startKey]);
     const cameFrom = new Map();
+    
+    // Converte single string para Set por retrocompatibilidade
+    const blocks = typeof blockedKeys === 'string' ? new Set([blockedKeys]) : (blockedKeys || new Set());
 
     while (queue.length > 0) {
       const [cx, cy] = queue.shift();
@@ -149,7 +152,7 @@ setLayout(screenWidth, screenHeight) {
         const nx = cx + dx;
         const ny = cy + dy;
         const key = `${nx},${ny}`;
-        if (key === blockedKey && key !== goalKey && key !== startKey) continue;
+        if (blocks.has(key) && key !== goalKey && key !== startKey) continue;
         if (this.isWallCell(nx, ny) || visited.has(key)) continue;
         visited.add(key);
         cameFrom.set(key, currentKey);

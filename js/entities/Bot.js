@@ -104,7 +104,20 @@ export default class Bot {
 
     // Recalcula a rota periodicamente ou se perdeu o caminho
     if (this.path.length === 0 || Math.random() < 0.05) {
-      this.path = maze.findPath(current, goal);
+      const blocks = new Set();
+      if (this.avoidOtherBots && others) {
+        for (const o of others) {
+          if (!o || o === this) continue;
+          const c = maze.worldToCell(o.x, o.y);
+          blocks.add(`${c[0]},${c[1]}`);
+        }
+      }
+
+      this.path = maze.findPath(current, goal, blocks);
+      // Fallback: se estiver cercado, ignora as ameaças (EXCETO se for evader, evader prefere ficar parado do que cometer suicídio)
+      if (this.path.length === 0 && blocks.size > 0 && this.type !== 'evader') {
+        this.path = maze.findPath(current, goal);
+      }
       this.pathIndex = 0;
     }
 
