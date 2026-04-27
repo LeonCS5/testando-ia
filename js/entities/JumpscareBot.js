@@ -13,13 +13,14 @@ export default class JumpscareBot extends Bot {
     this.jumpscareCooldown = 0;
     this.catchCount = 0;
     this.baseSpeed = this.speed;
+    this.ignoredTargets = new Set(); // Alvos que já foram pegos nesse ciclo
   }
   findNearestPrey(others) {
     if (!others || others.length === 0) return null;
     let nearest = null;
     let closestDist = Infinity;
     for (const other of others) {
-      if (!other || other === this || other.ghostTimer > 0) continue;
+      if (!other || other === this || other.ghostTimer > 0 || this.ignoredTargets.has(other)) continue;
       const dist = Math.hypot(other.x - this.x, other.y - this.y);
       if (dist < closestDist) {
         closestDist = dist;
@@ -29,7 +30,7 @@ export default class JumpscareBot extends Bot {
     return nearest;
   }
 
-  update(dt, maze, exitWorld, others = [], state = null) {
+  update(dt, maze, exitWorld, others = [], state = null, newBotsArray = null) {
     if (maze) this.maze = maze;
     this.updateSize();
 
@@ -50,7 +51,7 @@ export default class JumpscareBot extends Bot {
     if (state && this.jumpscareCooldown <= 0) {
       const allTargets = [state.player, ...others];
       for (const target of allTargets) {
-        if (!target || target === this || target.ghostTimer > 0) continue;
+        if (!target || target === this || target.ghostTimer > 0 || this.ignoredTargets.has(target)) continue;
         
         const dist = Math.hypot(target.x - this.x, target.y - this.y);
         if (dist < (this.size + target.size) * 0.9) {
@@ -74,11 +75,13 @@ export default class JumpscareBot extends Bot {
           }
           
           // Incrementa as capturas e velocidade
+          this.ignoredTargets.add(target);
           this.catchCount++;
           this.speed += 15;
           
           if (this.catchCount >= 4) {
             this.catchCount = 0;
+            this.ignoredTargets.clear(); // Libera todos para poder pegar novamente
             // Spawn de um novo Demiurgo na mesma posição ou local aleatório
             if (newBotsArray) {
               const [cx, cy] = maze.randomOpenCell();
