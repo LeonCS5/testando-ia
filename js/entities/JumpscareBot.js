@@ -14,6 +14,7 @@ export default class JumpscareBot extends Bot {
     this.catchCount = 0;
     this.baseSpeed = this.speed;
     this.ignoredTargets = new Set(); // Alvos que já foram pegos nesse ciclo
+    this.hasMultiplied = false;
   }
   findNearestPrey(others) {
     if (!others || others.length === 0) return null;
@@ -67,26 +68,29 @@ export default class JumpscareBot extends Bot {
             if (state.game && state.game.audio && typeof state.game.audio.wallHit === 'function') {
                state.game.audio.wallHit(); 
             }
-            this.jumpscareCooldown = 0.5; // Cooldown baixo pro player
-          } else {
-            // Se for bot, apenas amaldiçoa e deixa ele parado por 3 segundos
-            target.cursedTimer = 3;
-            this.jumpscareCooldown = 0.5; // Cooldown baixo pros bots tbm
           }
+          
+          target.cursedTimer = 3; // O alvo fica parado por 3 segundos (player ou bot)
+          this.jumpscareCooldown = 0.5; // Cooldown baixo pro Demiurgo
           
           // Incrementa as capturas e velocidade
           this.ignoredTargets.add(target);
           this.catchCount++;
-          this.speed += 15;
+          this.speed = Math.min(150, this.speed + 15); // Máximo de 150
           
           if (this.catchCount >= 4) {
             this.catchCount = 0;
             this.ignoredTargets.clear(); // Libera todos para poder pegar novamente
-            // Spawn de um novo Demiurgo na mesma posição ou local aleatório
-            if (newBotsArray) {
+            
+            // Um demiurgo só pode se multiplicar 1 vez!
+            if (!this.hasMultiplied && newBotsArray) {
+              this.hasMultiplied = true;
+              this.speed = this.speed / 2; // A velocidade atual é dividida entre os dois
+              
               const [cx, cy] = maze.randomOpenCell();
               const [nx, ny] = maze.getCellCenter(cx, cy);
-              newBotsArray.push(new JumpscareBot(nx, ny, { maze: maze }));
+              // O novo nasce com a metade da velocidade e pode se multiplicar 1 vez no futuro
+              newBotsArray.push(new JumpscareBot(nx, ny, { maze: maze, speed: this.speed }));
             }
           }
           

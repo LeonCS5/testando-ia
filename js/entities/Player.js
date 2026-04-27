@@ -14,6 +14,7 @@ export default class Player {
 
     this.wallHitCooldown = 0;
     this.ghostTimer = 0;
+    this.cursedTimer = 0;
     this.size = 10; // fallback
     this.updateSize();
   }
@@ -33,6 +34,11 @@ export default class Player {
     if (maze) this.maze = maze;
 
     this.updateSize();
+
+    if (this.cursedTimer > 0) {
+      this.cursedTimer -= dt;
+      return; // Congelado/amaldiçoado pelo Demiurgo
+    }
 
     let vx = 0;
     let vy = 0;
@@ -119,7 +125,9 @@ export default class Player {
   draw(ctx) {
     if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.size)) return;
 
-    if (this.ghostTimer > 0) {
+    if (this.cursedTimer > 0) {
+      ctx.globalAlpha = 0.3; // Fica transparente/congelado pelo Demiurgo
+    } else if (this.ghostTimer > 0) {
       ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2;
     } else if (this.wallHitCooldown > 0) {
       // Efeito de piscar quando bate na parede
