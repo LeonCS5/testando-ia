@@ -5,8 +5,8 @@ export default class EvasionBot extends Bot {
   constructor(x, y, options = {}) {
     super(x, y, {
       name: 'Objective',
-      color: '#ffff00',
-      speed: 520,
+      color: '#ea00ff',
+      speed: 320,
       type: 'evader',
       smartLevel: 3,
       avoidOtherBots: true,
